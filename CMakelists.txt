@@ -15,15 +15,14 @@ endif()
 # Set debug
 set(CMAKE_BUILD_TYPE DEBUG)
 
-set(LUTF_ARCH LUTF_x86_64)
-
 # Set C gnu11
 set(CMAKE_C_STANDARD 11)
 
-set(CMAKE_C_COMPILER gcc-10)
+# set(CMAKE_C_COMPILER gcc-10)
+set(CMAKE_C_COMPILER clang)
 
 # Set common flags
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -D${LUTF_ARCH}")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
 
 set(LIBNAME lutf)
 

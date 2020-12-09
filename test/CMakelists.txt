@@ -13,6 +13,14 @@ include_directories(${LUTF_SOURCE_DIR}/include)
 
 aux_source_directory(${LUTF_SOURCE_DIR}/test src)
 
+set(test_lutf_src
+    test_lutf.c)
+
+set(test_normal_src
+    test_normal.c)
+
 link_libraries(${LIBNAME})
 
-add_executable(test ${src})
+add_executable(test_lutf ${test_lutf_src})
+
+add_executable(test_normal ${test_normal_src})
