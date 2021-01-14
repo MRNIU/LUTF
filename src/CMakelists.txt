@@ -11,6 +11,8 @@ message(STATUS "CMAKE_C_FLAGS for lib is ${CMAKE_C_FLAGS}")
 
 include_directories(${LUTF_SOURCE_DIR}/include)
 
-aux_source_directory(${LUTF_SOURCE_CODE_DIR} src)
+# aux_source_directory(${LUTF_SOURCE_CODE_DIR} src)
+set(src
+    ${LUTF_SOURCE_CODE_DIR}/lutf.c)
 
 add_library(${LIBNAME} ${src})
