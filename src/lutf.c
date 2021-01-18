@@ -231,7 +231,7 @@ RETCODE_t lutf_del_task(lutf_thread_t *thread) {
     return SUCCESS;
 }
 
-int lutf_wait(lutf_thread_t *thread UNUSED) {
+int lutf_wait(lutf_thread_t *thread __attribute__((unused))) {
     return 0;
 }
 

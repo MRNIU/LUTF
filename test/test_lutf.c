@@ -24,7 +24,7 @@ void *fun1(void *argv) {
     return NULL;
 }
 
-void *fun2(void *argv UNUSED) {
+void *fun2(void *argv __attribute__((unused))) {
     i++;
     if (i % 1000 == 0) {
         printf("i: %d\n", i);
@@ -44,7 +44,8 @@ void *fun3(void *argv) {
 
 #define COUNT 800000
 
-int main(int argc UNUSED, char **argv UNUSED) {
+int main(int    argc __attribute__((unused)),
+         char **argv __attribute__((unused))) {
     lutf_thread_t *init = lutf_init();
     if (init == NULL) {
         printf("init error\n");
