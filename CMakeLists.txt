@@ -18,8 +18,8 @@ set(CMAKE_BUILD_TYPE DEBUG)
 # Set C gnu11
 set(CMAKE_C_STANDARD 11)
 
-# set(CMAKE_C_COMPILER gcc)
-set(CMAKE_C_COMPILER gcc-10)
+set(CMAKE_C_COMPILER gcc)
+# set(CMAKE_C_COMPILER gcc-10)
 # set(CMAKE_C_COMPILER clang)
 
 # Set common flags
