@@ -50,7 +50,7 @@ extern "C" {
 #if __GNUC__ > 9
 #define UNUSED __unused
 #else
-#define UNUSED
+#define UNUSED __attribute__((unused))
 #endif
 
 // 时间片 ms
