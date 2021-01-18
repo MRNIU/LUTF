@@ -9,6 +9,8 @@ extern "C" {
 #endif
 
 #include "stdio.h"
+#include "stdlib.h"
+#include "assert.h"
 #include "lutf.h"
 
 static uint32_t i = 0;
@@ -22,9 +24,7 @@ void *fun1(void *argv) {
     return NULL;
 }
 
-void *fun2(void *argv) {
-    uint64_t j = 0;
-    j          = i * i * i / 2 + 34;
+void *fun2(void *argv __unused) {
     i++;
     if (i % 1000 == 0) {
         printf("i: %d\n", i);
@@ -33,35 +33,40 @@ void *fun2(void *argv) {
 }
 
 void *fun3(void *argv) {
-    int a = ((int *)argv)[0];
-    printf("%d\n", a);
+    uint32_t a            = ((uint32_t *)argv)[0];
+    ((uint32_t *)argv)[0] = a * a;
+    // printf("%d\n", a);
     if (a % 1000 == 0) {
         printf("a: %d\n", a);
     }
     return NULL;
 }
 
-#define COUNT 500000
+#define COUNT 800000
 
 int main(int argc __unused, char **argv __unused) {
-    RETCODE_t ret = SUCCESS;
-    ret           = lutf_init();
-    if (ret != SUCCESS) {
+    lutf_thread_t *init = lutf_init();
+    if (init == NULL) {
         printf("init error\n");
     }
-    lutf_thread_t *t[COUNT];
-    int            ar[COUNT];
+    lutf_thread_t *thread =
+        (lutf_thread_t *)malloc(COUNT * sizeof(lutf_thread_t));
+
+    uint32_t ar[COUNT];
     for (int k = 0; k < COUNT; k++) {
         ar[k] = k;
-        t[k]  = lutf_create_task(fun3, &ar[k]);
+        lutf_create_task(&thread[k], fun3, &ar[k]);
     }
-    for (int k = COUNT - 1; k >= 0; k--) {
-        ret = lutf_run(t[k]);
-        if (ret != SUCCESS) {
+    for (int k = 0; k < COUNT; k++) {
+        if (lutf_run(&thread[k]) != SUCCESS) {
             printf("Add sched error\n");
         }
     }
-    printf("End.");
+    for (int k = 0; k < COUNT; k++) {
+        assert(ar[k] == k * k);
+    }
+    free(thread);
+    printf("End.\n");
     return 0;
 }
 

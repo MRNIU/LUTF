@@ -10,25 +10,60 @@ extern "C" {
 
 #include "stdio.h"
 #include "stdint.h"
+#include "stdlib.h"
+#include "unistd.h"
+#include "assert.h"
+#include "pthread.h"
 
-static uint64_t i = 0;
+static uint32_t i = 0;
 
-void *fun2(void *argv) {
-    uint64_t j = 0;
-    j          = i * i * i / 2 + 34;
-    i++;
-    if (i == 2000000) {
-        printf("end\n");
+void *fun1(void *argv) {
+    unsigned long long a = ((unsigned long long *)argv)[0];
+    printf("%llu\n", a);
+    if (a == 2000000) {
+        ;
     }
     return NULL;
 }
 
-int main(int argc __unused, char **argv __unused) {
-    for (int i = 0; i < 2000000; i++) {
-        fun2(NULL);
+void *fun2(void *argv __unused) {
+    i++;
+    if (i % 1000 == 0) {
+        printf("i: %d\n", i);
     }
+    return NULL;
+}
 
-    printf("End.");
+void *fun3(void *argv) {
+    uint32_t a            = ((uint32_t *)argv)[0];
+    ((uint32_t *)argv)[0] = a * a;
+    // printf("%d\n", a);
+    if (a % 1000 == 0) {
+        printf("a: %d\n", a);
+    }
+    return NULL;
+}
+
+#define COUNT 800000
+
+int main(int argc __unused, char **argv __unused) {
+    pthread_t *threads = (pthread_t *)malloc(COUNT * sizeof(pthread_t));
+    int        ar[COUNT];
+    for (int k = 0; k < COUNT; k++) {
+        ar[k] = k;
+        pthread_create(&threads[k], NULL, fun3, &ar[k]);
+    }
+    for (int k = 0; k < COUNT; k++) {
+        if (pthread_join(threads[k], NULL)) {
+            printf("thread is not exit...\n");
+            return 0;
+        }
+    }
+    for (int k = 0; k < COUNT; k++) {
+        assert(ar[k] == k * k);
+    }
+    free(threads);
+    printf("End.\n");
     return 0;
 }
 

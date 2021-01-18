@@ -92,4 +92,4 @@ LUTF 使用 cmake 构建
 
 [man/setitimer](https://man7.org/linux/man-pages/man2/setitimer.2.html)
 
-
+[linux进程调度算法:分时调度策略、FIFO调度策略、RR调度策略](https://blog.csdn.net/qq_32811489/article/details/70768264)

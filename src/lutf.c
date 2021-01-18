@@ -23,6 +23,7 @@ static lutf_env_t env = {
     .curr_thread = NULL,
 };
 
+// 仅触发一次定时器
 struct itimerval tick_once = {
     .it_interval.tv_sec  = 0,
     .it_interval.tv_usec = 0,
@@ -30,6 +31,7 @@ struct itimerval tick_once = {
     .it_value.tv_usec    = SLICE,
 };
 
+// 取消所有定时
 struct itimerval tick_cancel = {
     .it_interval.tv_sec  = 0,
     .it_interval.tv_usec = 0,
@@ -47,6 +49,9 @@ static void sig_alarm_handler(int signo) {
         do {
             // 切换到下个线程
             env.curr_thread = env.curr_thread->next;
+            if (env.curr_thread == env.main_thread) {
+                break;
+            }
             // 根据状态
             switch (env.curr_thread->status) {
                 // 跳过
@@ -55,11 +60,10 @@ static void sig_alarm_handler(int signo) {
                     break;
                 }
                 // 跳过
-                case lutf_EXIT: {
-                    lutf_del_task(env.curr_thread);
-                    printf("EXIT\n");
-                    break;
-                }
+                // case lutf_EXIT: {
+                //     printf("EXIT\n");
+                //     break;
+                // }
                 case lutf_WAIT: {
                     printf("WAIT\n");
                     break;
@@ -82,18 +86,18 @@ static void sig_alarm_handler(int signo) {
     return;
 }
 
-RETCODE_t lutf_init(void) {
+lutf_thread_t *lutf_init(void) {
     int ret = 0;
     // 注册信号处理函数
     if (signal(SIGALRM, sig_alarm_handler) == SIG_ERR) {
         printf("init signal() err!\n");
-        return FAIL;
+        return NULL;
     }
     // 初始化 main 线程信息
     lutf_thread_t *thread_main = (lutf_thread_t *)malloc(sizeof(lutf_thread_t));
     if (thread_main == NULL) {
         printf("init malloc err!\n");
-        return FAIL;
+        return NULL;
     }
     // 线程 id 为 0
     thread_main->id = 0;
@@ -107,7 +111,7 @@ RETCODE_t lutf_init(void) {
     thread_main->func = NULL;
     // 参数为 NULL
     // 设为 0xCDCD 便于调试
-    thread_main->argv = 0xCDCD;
+    thread_main->argv = (void *)0xCDCD;
     // 返回值为空
     thread_main->ret = NULL;
     // 返回状态默认为成功
@@ -123,24 +127,23 @@ RETCODE_t lutf_init(void) {
     ret = setitimer(ITIMER_REAL, &tick_once, NULL);
     if (ret != 0) {
         printf("init setitimer() err!\n");
-        return FAIL;
+        return NULL;
     }
-    return SUCCESS;
+    return thread_main;
 }
 
-lutf_thread_t *lutf_create_task(lutf_fun_t fun, void *argv) {
-    // 分配线程空间
-    lutf_thread_t *thread = (lutf_thread_t *)malloc(sizeof(lutf_thread_t));
+int lutf_create_task(lutf_thread_t *thread, lutf_fun_t fun, void *argv) {
     if (thread == NULL) {
         printf("lutf_create_task thread NULL.\n");
-        return NULL;
+        return FAIL;
     }
     // 分配线程栈
-    thread->stack = (char *)malloc(LUTF_STACK_SIZE);
-    if (thread->stack == NULL) {
-        printf("lutf_create_task stack NULL.\n");
-        return NULL;
-    }
+    // thread->stack = (char *)malloc(LUTF_STACK_SIZE);
+    // if (thread->stack == NULL) {
+    //     printf("lutf_create_task stack NULL.\n");
+    //     return NULL;
+    // }
+    thread->stack = NULL;
     // 线程 id 线性增加
     thread->id = env.nid;
     // 默认优先级
@@ -156,7 +159,7 @@ lutf_thread_t *lutf_create_task(lutf_fun_t fun, void *argv) {
     // 退出代码
     thread->exit_code = 0;
     thread->next      = thread;
-    return thread;
+    return SUCCESS;
 }
 
 RETCODE_t lutf_run(lutf_thread_t *thread) {
@@ -187,17 +190,22 @@ RETCODE_t lutf_run(lutf_thread_t *thread) {
     else {
         // 取消所有定时器，这样可以保证线程的 FIFO
         // 缺点是如果当前线程执行时间过长，lutf 无法利用这段时间
+        // ret = setitimer(ITIMER_REAL, &tick_cancel, NULL);
+        // if (ret != 0) {
+        //     printf("lutf_run setitimer() err!\n");
+        //     return FAIL;
+        // }
+        // 手动切换线程栈
+        // #ifdef __x86_64__
+        //         __asm__("mov %0, %%rsp"
+        //                 :
+        //                 : "r"(env.curr_thread->stack + LUTF_STACK_SIZE));
+        // #endif
         ret = setitimer(ITIMER_REAL, &tick_cancel, NULL);
         if (ret != 0) {
             printf("lutf_run setitimer() err!\n");
             return FAIL;
         }
-        // 手动切换线程栈
-#ifdef __x86_64__
-        __asm__("mov %0, %%rsp"
-                :
-                : "r"(env.curr_thread->stack + LUTF_STACK_SIZE));
-#endif
         // 执行函数
         env.curr_thread->func(env.curr_thread->argv);
         env.curr_thread->status = lutf_EXIT;
@@ -207,8 +215,7 @@ RETCODE_t lutf_run(lutf_thread_t *thread) {
 }
 
 RETCODE_t lutf_del_task(lutf_thread_t *thread) {
-    lutf_thread_t *pre;
-    pre = thread;
+    lutf_thread_t *pre = thread;
     // 如果是最后一个线程，说明是 main thread，直接返回
     if (pre == pre->next) {
         return SUCCESS;
@@ -222,6 +229,10 @@ RETCODE_t lutf_del_task(lutf_thread_t *thread) {
     free(thread->stack);
     free(thread);
     return SUCCESS;
+}
+
+int lutf_wait(lutf_thread_t *thread __unused) {
+    return 0;
 }
 
 #ifdef __cplusplus

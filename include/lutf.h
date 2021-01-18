@@ -26,18 +26,29 @@ extern "C" {
 
 // 评审专家根据复赛评审规则打分，分数排名前50的队伍将进入决赛。
 
+// 整体逻辑
+// 在初始化时会创建一个定时器，该定时器只触发一次，触发后跳进信号处理
+// 在信号处理函数中，进行 curr_thread 的设置，同时更新 thread 的运行时间信息，
+// 之后信号处理函数会重新设置一个定时器，只触发一次，在最后调用 longjmp，跳转到
+// curr_thread，执行函数
+// 在这之前需要调用 run 函数，
+
 // 优化方向
 // TODO:
-// 避免 setjmp 嵌套
-// 确保函数执行完成后回收占用的资源
-// 堆结构使用了大量资源，需要优化掉
+// 进程 id 的分配，避免冲突
+// 其它调度方式的支持
+// 确保 FIFO
+// 任务的等待
+// 运行中某个任务出现问题如何处理？
+// 在 FIFO 的情况下如果不进行任务切换会导致剩余的所有任务被阻塞
+// stack 的处理是否必要？
 
 #include "stdint.h"
 #include "sys/types.h"
 #include "setjmp.h"
 
 // 时间片 ms
-#define SLICE (100)
+#define SLICE (300)
 // 线程栈大小
 #define LUTF_STACK_SIZE (4096)
 
@@ -104,12 +115,12 @@ typedef struct lutf_env {
 } lutf_env_t;
 
 // LUTF 初始化
-// alg: 要使用的算法
-RETCODE_t lutf_init(void);
+// 返回当前函数的指针
+lutf_thread_t *lutf_init(void);
 // 线程创建
 // fun: 要执行的函数
 // argv: fun 的参数
-lutf_thread_t *lutf_create_task(lutf_fun_t fun, void *argv);
+int lutf_create_task(lutf_thread_t *thread, lutf_fun_t fun, void *argv);
 // 将线程加入调度
 // thread: 要加入的线程
 RETCODE_t lutf_run(lutf_thread_t *thread);
@@ -128,6 +139,8 @@ lutf_task_id_t lutf_get_task_id(lutf_thread_t *thread);
 // 获取线程状态
 // thread: 要获取状态的线程
 lutf_status_t lutf_get_task_status(lutf_thread_t *thread);
+// 等待线程执行完毕
+int lutf_wait(lutf_thread_t *thread);
 
 #ifdef __cplusplus
 }
