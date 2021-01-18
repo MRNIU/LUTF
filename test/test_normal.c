@@ -14,6 +14,7 @@ extern "C" {
 #include "unistd.h"
 #include "assert.h"
 #include "pthread.h"
+#include "lutf.h"
 
 static uint32_t i = 0;
 
