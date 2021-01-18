@@ -24,7 +24,7 @@ void *fun1(void *argv) {
     return NULL;
 }
 
-void *fun2(void *argv __unused) {
+void *fun2(void *argv UNUSED) {
     i++;
     if (i % 1000 == 0) {
         printf("i: %d\n", i);
