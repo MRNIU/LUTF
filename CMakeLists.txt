@@ -18,9 +18,11 @@ set(CMAKE_BUILD_TYPE DEBUG)
 # Set C gnu11
 set(CMAKE_C_STANDARD 11)
 
-set(CMAKE_C_COMPILER gcc)
-# set(CMAKE_C_COMPILER gcc-10)
-# set(CMAKE_C_COMPILER clang)
+if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+    set(CMAKE_C_COMPILER gcc)
+elseif (CMAKE_SYSTEM_NAME MATCHES "Darwin")
+    set(CMAKE_C_COMPILER gcc-10)
+endif ()
 
 # Set common flags
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
