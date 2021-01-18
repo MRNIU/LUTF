@@ -47,6 +47,12 @@ extern "C" {
 #include "sys/types.h"
 #include "setjmp.h"
 
+#if __GNUC__ > 9
+#define UNUSED __unused
+#else
+#define UNUSED
+#endif
+
 // 时间片 ms
 #define SLICE (300)
 // 线程栈大小

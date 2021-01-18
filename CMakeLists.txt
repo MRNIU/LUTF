@@ -4,7 +4,7 @@
 # CMakeLists.txt for MRNIU/LUTF.
 
 # Set minimum cmake version
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 3.12)
 
 project(LUTF C)
 
@@ -18,7 +18,8 @@ set(CMAKE_BUILD_TYPE DEBUG)
 # Set C gnu11
 set(CMAKE_C_STANDARD 11)
 
-set(CMAKE_C_COMPILER gcc-10)
+set(CMAKE_C_COMPILER gcc)
+# set(CMAKE_C_COMPILER gcc-10)
 # set(CMAKE_C_COMPILER clang)
 
 # Set common flags

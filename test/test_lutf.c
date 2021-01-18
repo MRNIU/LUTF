@@ -44,7 +44,7 @@ void *fun3(void *argv) {
 
 #define COUNT 800000
 
-int main(int argc __unused, char **argv __unused) {
+int main(int argc UNUSED, char **argv UNUSED) {
     lutf_thread_t *init = lutf_init();
     if (init == NULL) {
         printf("init error\n");

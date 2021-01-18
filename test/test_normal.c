@@ -46,7 +46,7 @@ void *fun3(void *argv) {
 
 #define COUNT 800000
 
-int main(int argc __unused, char **argv __unused) {
+int main(int argc UNUSED, char **argv UNUSED) {
     pthread_t *threads = (pthread_t *)malloc(COUNT * sizeof(pthread_t));
     int        ar[COUNT];
     for (int k = 0; k < COUNT; k++) {
