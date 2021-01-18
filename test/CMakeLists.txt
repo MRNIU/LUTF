@@ -4,7 +4,7 @@
 # CMakeLists.txt for MRNIU/LUTF.
 
 if (CMAKE_BUILD_TYPE STREQUAL DEBUG)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -ggdb -O0 -fprofile-arcs -ftest-coverage")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -ggdb -O0 -lpthread -fprofile-arcs -ftest-coverage")
 endif ()
 
 message(STATUS "CMAKE_C_FLAGS for test is ${CMAKE_C_FLAGS}")
