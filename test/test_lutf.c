@@ -46,24 +46,24 @@ void *fun3(void *argv) {
 
 int main(int    argc __attribute__((unused)),
          char **argv __attribute__((unused))) {
-    lutf_thread_t *init = lutf_init();
-    if (init == NULL) {
+    int init = lutf_init();
+    if (init != 0) {
         printf("init error\n");
     }
     lutf_thread_t *thread =
         (lutf_thread_t *)malloc(COUNT * sizeof(lutf_thread_t));
 
     uint32_t ar[COUNT];
-    for (int k = 0; k < COUNT; k++) {
+    for (uint32_t k = 0; k < COUNT; k++) {
         ar[k] = k;
         lutf_create_task(&thread[k], fun3, &ar[k]);
     }
-    for (int k = 0; k < COUNT; k++) {
+    for (uint32_t k = 0; k < COUNT; k++) {
         if (lutf_run(&thread[k]) != SUCCESS) {
             printf("Add sched error\n");
         }
     }
-    for (int k = 0; k < COUNT; k++) {
+    for (uint32_t k = 0; k < COUNT; k++) {
         assert(ar[k] == k * k);
     }
     free(thread);

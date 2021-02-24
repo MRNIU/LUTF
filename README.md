@@ -41,7 +41,7 @@ int main(int argc, char ** argv) {
 编译命令
 
 ```shell
-make gcc-10 
+make gcc-10
 ```
 
 

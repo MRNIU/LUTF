@@ -51,12 +51,15 @@ extern "C" {
 #define SLICE (300)
 // 线程栈大小
 #define LUTF_STACK_SIZE (4096)
+//信号量数量
+#define SEM_SIZE (1000)
 
 // 线程状态
 typedef enum lutf_status {
     lutf_RUNNING = 0,
     lutf_EXIT,
     lutf_WAIT,
+    lutf_SEM,
     lutf_SLEEP,
 } lutf_status_t;
 
@@ -66,43 +69,32 @@ typedef void *(*lutf_fun_t)(void *);
 // 线程 id 类型
 typedef int32_t lutf_task_id_t;
 
-// 错误码类型
-typedef enum RETCODE {
-    // 成功
-    SUCCESS = 0,
-    FAIL    = -1,
-} RETCODE_t;
-
-// 优先级类型
-typedef enum PRIO {
-    HIGH = 3,
-    MID  = 2,
-    LOW  = 1,
-} PRIO_t;
-
 // 线程类型
 typedef struct lutf_thread {
     // 线程 id
     lutf_task_id_t id;
-    // 线程优先级
-    PRIO_t prio;
     // 线程状态
     lutf_status_t status;
-    // 线程栈
-    char *stack;
     // 线程函数
     lutf_fun_t func;
     // 线程参数
-    void *argv;
-    // 线程返回值
-    void *ret;
-    // 线程退出状态
-    RETCODE_t exit_code;
+    void *arg;
+    // 线程退出值
+    void *exit_value;
     // 线程上下文
     jmp_buf context;
     // 下一个线程
     struct lutf_thread *next;
+    // 等待队列
+    struct lutf_thread **waited;
 } lutf_thread_t;
+
+// 信号量
+typedef struct lutf_S {
+    long            s;
+    long            size;
+    lutf_thread_t **queue;
+} lutf_S_t;
 
 // 全局状态
 typedef struct lutf_env {
@@ -115,32 +107,33 @@ typedef struct lutf_env {
 } lutf_env_t;
 
 // LUTF 初始化
-// 返回当前函数的指针
-lutf_thread_t *lutf_init(void);
+// 返回值：成功返回 0
+int lutf_init(void);
 // 线程创建
+// thread: 线程结构
 // fun: 要执行的函数
 // argv: fun 的参数
-int lutf_create_task(lutf_thread_t *thread, lutf_fun_t fun, void *argv);
-// 将线程加入调度
-// thread: 要加入的线程
-RETCODE_t lutf_run(lutf_thread_t *thread);
-// 线程删除
-// thread: 要删除的线程
-RETCODE_t lutf_del_task(lutf_thread_t *thread);
+// 返回值：成功返回 0
+int lutf_create(lutf_thread_t *thread, lutf_fun_t fun, void *arg);
+// 等待 thread 结束
+// thread: 要等待的线程
+// ret: 线程返回值
+// 返回值：lutf_join 函数执行情况，成功返回 0
+int lutf_join(lutf_thread_t thread, void **ret);
 // 线程退出
-// status: 退出状态
-RETCODE_t lutf_exit_task(int32_t status);
-// 设置线程优先级
-// prio: 指定优先级
-RETCODE_t lutf_set_task_prio(PRIO_t prio);
-// 获取线程 id
-// thread: 要获取 id 的线程
-lutf_task_id_t lutf_get_task_id(lutf_thread_t *thread);
-// 获取线程状态
-// thread: 要获取状态的线程
-lutf_status_t lutf_get_task_status(lutf_thread_t *thread);
+// value: 退出参数
+int lutf_exit(void *value);
 // 等待线程执行完毕
 int lutf_wait(lutf_thread_t *thread);
+// 线程删除
+// thread: 要删除的线程
+int lutf_del_task(lutf_thread_t *thread);
+// 创建信号量
+lutf_S_t *lutf_createS(int ss);
+// P
+int lutf_P(lutf_S_t *s);
+// V
+int lutf_V(lutf_S_t *s);
 
 #ifdef __cplusplus
 }
