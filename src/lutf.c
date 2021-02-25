@@ -89,7 +89,7 @@ static void sig_alarm_handler(int signo) {
         // 开启 timer
         assert(setitimer(ITIMER_REAL, &tick_once, NULL) == 0);
         // 开始执行
-        // 会返回到 lutf_run 处的 setjmp
+        // 会返回到 lutf_join 处的 setjmp
         longjmp(env.curr_thread->context, 1);
     }
     return;
@@ -140,8 +140,8 @@ int lutf_create(lutf_thread_t *thread, lutf_fun_t fun, void *arg) {
 
 int lutf_join(lutf_thread_t thread, void **ret) {
     // 添加到线程管理结构
-    thread.next           = env.main_thread->next;
-    env.main_thread->next = &thread;
+    thread.next           = env.main_thread;
+    env.main_thread->prev = &thread;
     // 更新全局信息
     env.nid += 1;
 
@@ -168,23 +168,26 @@ int lutf_join(lutf_thread_t thread, void **ret) {
         assert(setitimer(ITIMER_REAL, &tick_cancel, NULL) == 0);
         // 执行函数
         env.curr_thread->func(env.curr_thread->arg);
-        *ret                    = env.curr_thread->exit_value;
+        if (ret != NULL) {
+            *ret = env.curr_thread->exit_value;
+        }
         env.curr_thread->status = lutf_EXIT;
         raise(SIGALRM);
     }
     return 0;
 }
 
+// TODO: main 退出时将 SIGALRM 处理恢复默认
 int lutf_exit(void *value) {
-    env.curr_thread->exit_value = value;
-    env.curr_thread->status     = lutf_EXIT;
     // 如果只剩 main 线程，结束 lutf
-    if (env.curr_thread == env.curr_thread->next) {
+    if (env.curr_thread == env.main_thread) {
         assert(setitimer(ITIMER_REAL, &tick_cancel, NULL) == 0);
         // 释放 main 信息占用空间
         free(env.curr_thread);
-        // SIGALRM 恢复默认
-        signal(SIGALRM, SIG_DFL);
+    }
+    else {
+        env.curr_thread->exit_value = value;
+        env.curr_thread->status     = lutf_EXIT;
     }
     return 0;
 }
@@ -198,19 +201,13 @@ int lutf_wait(lutf_thread_t *thread) {
     return thread->status;
 }
 
-int lutf_del_task(lutf_thread_t *thread) {
-    lutf_thread_t *pre = thread;
-    // 如果是最后一个线程，说明是 main thread，直接返回
-    if (pre == pre->next) {
-        return 0;
-    }
-    // 找到前置节点
-    while (pre->next != thread) {
-        pre = pre->next;
-    }
-    // 设置指针
-    pre->next = thread->next;
-    free(thread);
+lutf_thread_t *lutf_self(void) {
+    return env.curr_thread;
+}
+
+int lutf_cancel(lutf_thread_t *thread) {
+    lutf_exit(NULL);
+    raise(SIGALRM);
     return 0;
 }
 

@@ -83,6 +83,8 @@ typedef struct lutf_thread {
     void *exit_value;
     // 线程上下文
     jmp_buf context;
+    // 上一个线程
+    struct lutf_thread *prev;
     // 下一个线程
     struct lutf_thread *next;
     // 等待队列
@@ -125,9 +127,13 @@ int lutf_join(lutf_thread_t thread, void **ret);
 int lutf_exit(void *value);
 // 等待线程执行完毕
 int lutf_wait(lutf_thread_t *thread);
-// 线程删除
-// thread: 要删除的线程
-int lutf_del_task(lutf_thread_t *thread);
+// 获取当前线程结构
+// 返回值：当前线程结构
+lutf_thread_t *lutf_self(void);
+// 取消线程
+// thread: 要取消的线程
+// 返回值：成功返回 0
+int lutf_cancel(lutf_thread_t *thread);
 // 创建信号量
 lutf_S_t *lutf_createS(int ss);
 // P

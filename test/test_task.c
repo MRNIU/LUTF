@@ -13,7 +13,7 @@ extern "C" {
 #include "stdio.h"
 #include "lutf.h"
 
-static void *test1(void *argv __attribute__((unused))) {
+static void *test1(void *arg __attribute__((unused))) {
     return NULL;
 }
 
