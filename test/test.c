@@ -25,7 +25,8 @@ void run_tests(UnitTestFunction *tests) {
 }
 
 static UnitTestFunction tests[] = {
-    test_task, test_manage, test_sched, test_io, test_fifo, NULL,
+    basic,
+    NULL,
 };
 
 int main(int    argc __attribute__((unused)),

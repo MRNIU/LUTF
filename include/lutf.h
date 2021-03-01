@@ -88,7 +88,7 @@ typedef struct lutf_thread {
     // 下一个线程
     struct lutf_thread *next;
     // 等待队列
-    struct lutf_thread **waited;
+    struct lutf_thread *waited;
 } lutf_thread_t;
 
 // 信号量
@@ -121,7 +121,7 @@ int lutf_create(lutf_thread_t *thread, lutf_fun_t fun, void *arg);
 // thread: 要等待的线程
 // ret: 线程返回值
 // 返回值：lutf_join 函数执行情况，成功返回 0
-int lutf_join(lutf_thread_t thread, void **ret);
+int lutf_join(lutf_thread_t *thread, void **ret);
 // 线程退出
 // value: 退出参数
 int lutf_exit(void *value);
@@ -130,6 +130,9 @@ int lutf_wait(lutf_thread_t *thread);
 // 获取当前线程结构
 // 返回值：当前线程结构
 lutf_thread_t *lutf_self(void);
+// 比较两个线程是否相同
+// 返回值：相同返回 1
+int lutf_equal(lutf_thread_t *thread1, lutf_thread_t *thread2);
 // 取消线程
 // thread: 要取消的线程
 // 返回值：成功返回 0

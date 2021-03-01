@@ -9,11 +9,7 @@ aux_source_directory(${LUTF_SOURCE_DIR}/test src)
 
 set(test_src
     test.c
-    test_task.c
-    test_manage.c
-    test_sched.c
-    test_io.c
-    test_fifo.c)
+    basic.c)
 
 link_libraries(${LIBNAME})
 
