@@ -85,8 +85,8 @@ static int _join_exit(void) {
 static int _million(void) {
     assert(lutf_init() == 0);
 // BUG: COUNT 取 4, 8, 12, 16 等数时 ret 最后一项无法正确输出
-#define COUNT 4
-
+// 在最新版 osx 上的 gcc-10/clang 出现
+#define COUNT 6400000
     lutf_thread_t *threads =
         (lutf_thread_t *)malloc(COUNT * sizeof(lutf_thread_t));
     void **   ret = malloc(COUNT * sizeof(uint32_t));
@@ -103,8 +103,9 @@ static int _million(void) {
         printf("ret: %d\n", *(uint32_t *)ret[i]);
     }
     printf("Wait a second.\n");
-    for (int i = 0; i < CLOCKS_PER_SEC * 500; i++)
+    for (int i = 0; i < CLOCKS_PER_SEC * 500; i++) {
         ;
+    }
     for (size_t i = COUNT / 2; i < COUNT; i++) {
         assert(lutf_create(&threads[i], test4, (void *)&arg[i]) == 0);
     }
