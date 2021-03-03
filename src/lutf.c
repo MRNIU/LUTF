@@ -17,6 +17,7 @@ extern "C" {
 #include "lutf.h"
 
 // TODO: 使用 sigaction 替换 signal
+// TODO: 论证：FIFO 方式需不需要时钟处理
 
 // 全局状态
 static lutf_env_t env = {
@@ -116,10 +117,10 @@ static void sig_alarm_handler(int signo __attribute__((unused))) {
                     break;
                 }
             }
+            // 开启 timer
+            assert(setitimer(ITIMER_REAL, &tick, NULL) == 0);
+            // getitimer(ITIMER_REAL, &left);
         }
-        // 开启 timer
-        assert(setitimer(ITIMER_VIRTUAL, &tick, NULL) == 0);
-        // getitimer(ITIMER_VIRTUAL, &left);
         // 开始执行
         // 会返回到 lutf_join 处的 setjmp
         longjmp(env.curr_thread->context, 1);
@@ -128,8 +129,10 @@ static void sig_alarm_handler(int signo __attribute__((unused))) {
 }
 
 int lutf_init(void) {
-    // 注册信号处理函数
-    signal(SIGALRM, sig_alarm_handler);
+    if (env.sched_method == TIME) {
+        // 注册信号处理函数
+        signal(SIGALRM, sig_alarm_handler);
+    }
     // 初始化 main 线程信息
     lutf_thread_t *thread_main = (lutf_thread_t *)malloc(sizeof(lutf_thread_t));
     assert(thread_main != NULL);
@@ -152,10 +155,15 @@ int lutf_init(void) {
     env.curr_thread = thread_main;
     // 默认为 FIFO
     env.sched_method = FIFO;
-    // 优先级默认低
-    env.curr_thread->prior = LOW;
-    // 开启 timer
-    assert(setitimer(ITIMER_VIRTUAL, &tick_once, NULL) == 0);
+    if (env.sched_method == TIME) {
+        // 优先级默认低
+        env.curr_thread->prior = LOW;
+        // 开启 timer
+        assert(setitimer(ITIMER_REAL, &tick_once, NULL) == 0);
+    }
+    else {
+        sig_alarm_handler(SIGALRM);
+    }
     return 0;
 }
 
@@ -222,26 +230,29 @@ int lutf_join(lutf_thread_t *thread, void **ret) {
     // 如果 setjmp 返回值不为 0，说明是从 thread 返回，
     // 这时 env->curr_thread 指向新的线程
     else {
-        // 取消所有定时器，这样可以保证线程的 FIFO
-        if (env.sched_method == FIFO) {
-            assert(setitimer(ITIMER_VIRTUAL, &tick_cancel, NULL) == 0);
-        }
         // 执行函数
         env.curr_thread->func(env.curr_thread->arg);
         if (ret != NULL) {
             *ret = env.curr_thread->exit_value;
         }
         env.curr_thread->status = lutf_EXIT;
-        raise(SIGALRM);
+        if (env.sched_method == TIME) {
+            raise(SIGALRM);
+        }
+        else {
+            sig_alarm_handler(SIGALRM);
+        }
     }
     return 0;
 }
 
-// TODO: main 退出时将 SIGALRM 处理恢复默认
 int lutf_exit(void *value) {
     // 如果只剩 main 线程，结束 lutf
     if (env.curr_thread == env.main_thread) {
-        assert(setitimer(ITIMER_VIRTUAL, &tick_cancel, NULL) == 0);
+        if (env.sched_method == TIME) {
+            // TODO: main 退出时将 SIGALRM 处理恢复默认
+            assert(setitimer(ITIMER_REAL, &tick_cancel, NULL) == 0);
+        }
         // 释放 main 信息占用空间
         free(env.curr_thread);
     }
@@ -254,7 +265,7 @@ int lutf_exit(void *value) {
 
 int lutf_wait(lutf_thread_t *thread) {
     // 停止定时器
-    assert(setitimer(ITIMER_VIRTUAL, &tick_cancel, NULL) == 0);
+    assert(setitimer(ITIMER_REAL, &tick_cancel, NULL) == 0);
     env.curr_thread->status = lutf_WAIT;
     thread->waited          = env.curr_thread;
     raise(SIGALRM);
@@ -322,7 +333,7 @@ lutf_S_t *lutf_createS(int ss) {
 int lutf_P(lutf_S_t *s) {
     if (s->s > 0) {
         s->s -= 1;
-        assert(setitimer(ITIMER_VIRTUAL, &tick_cancel, NULL) == 0);
+        assert(setitimer(ITIMER_REAL, &tick_cancel, NULL) == 0);
     }
     else {
         s->s -= 1;
@@ -345,7 +356,7 @@ int lutf_V(lutf_S_t *s) {
         s->s += 1;
         s->queue[labs(s->s)]->status = lutf_RUNNING;
     }
-    assert(setitimer(ITIMER_VIRTUAL, &tick_cancel, NULL) == 0);
+    assert(setitimer(ITIMER_REAL, &tick_cancel, NULL) == 0);
     return 0;
 }
 
