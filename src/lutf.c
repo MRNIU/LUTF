@@ -45,6 +45,28 @@ struct itimerval tick_cancel = {
 // 用于获取剩余时间
 struct itimerval old_tick;
 
+typedef enum {
+    ERR_FIFO,
+    ERR_TIME,
+} err_t;
+
+static void err_handle(err_t no) {
+    switch (no) {
+        case ERR_FIFO: {
+            printf("You need in FIFO mode.\n");
+            break;
+        }
+        case ERR_TIME: {
+            printf("You need in TIME mode.\n");
+            break;
+        }
+        default: {
+            break;
+        }
+    }
+    return;
+}
+
 static int _wait(lutf_thread_t *thread) {
     lutf_thread_t *p;
     p = thread;
@@ -64,6 +86,7 @@ static int _wait(lutf_thread_t *thread) {
 static void sig_alarm_handler(int signo __attribute__((unused))) {
     if (setjmp(env.curr_thread->context) == 0) {
         do {
+            printf("123\n");
             // 切换到下个线程
             env.curr_thread = env.curr_thread->next;
             if (env.curr_thread == env.main_thread) {
@@ -72,8 +95,12 @@ static void sig_alarm_handler(int signo __attribute__((unused))) {
             // 根据状态
             switch (env.curr_thread->status) {
                 // 跳过
+                case lutf_READY: {
+                    printf("READY\n");
+                    break;
+                }
                 case lutf_RUNNING: {
-                    printf("RUNNING233\n");
+                    printf("RUNNING\n");
                     break;
                 }
                 case lutf_WAIT: {
@@ -129,10 +156,6 @@ static void sig_alarm_handler(int signo __attribute__((unused))) {
 }
 
 int lutf_init(void) {
-    if (env.sched_method == TIME) {
-        // 注册信号处理函数
-        signal(SIGALRM, sig_alarm_handler);
-    }
     // 初始化 main 线程信息
     lutf_thread_t *thread_main = (lutf_thread_t *)malloc(sizeof(lutf_thread_t));
     assert(thread_main != NULL);
@@ -158,10 +181,13 @@ int lutf_init(void) {
     if (env.sched_method == TIME) {
         // 优先级默认低
         env.curr_thread->prior = LOW;
+        // 注册信号处理函数
+        signal(SIGALRM, sig_alarm_handler);
         // 开启 timer
         assert(setitimer(ITIMER_REAL, &tick_once, NULL) == 0);
     }
-    else {
+    else if (env.sched_method == FIFO) {
+        // FIFO 方式则手动调用
         sig_alarm_handler(SIGALRM);
     }
     return 0;
@@ -173,7 +199,7 @@ int lutf_set_sched_method(lutf_sched_t sched) {
 }
 
 int lutf_set_prior(lutf_thread_t *thread, lutf_prior_t p) {
-    assert(env.sched_method != FIFO);
+    err_handle(ERR_TIME);
     thread->prior = p;
     return 0;
 }
@@ -189,10 +215,12 @@ int lutf_create(lutf_thread_t *thread, lutf_fun_t fun, void *arg) {
     // 参数
     thread->arg = arg;
     // 退出值
-    thread->exit_value = NULL;
-    thread->prev       = thread;
-    thread->next       = thread;
-    thread->prior      = MID;
+    thread->exit_value  = NULL;
+    thread->prev        = thread;
+    thread->next        = thread;
+    thread->waited      = NULL;
+    thread->prior       = MID;
+    thread->resume_time = 0;
     return 0;
 }
 
@@ -264,6 +292,7 @@ int lutf_exit(void *value) {
 }
 
 int lutf_wait(lutf_thread_t *thread) {
+    err_handle(ERR_TIME);
     // 停止定时器
     assert(setitimer(ITIMER_REAL, &tick_cancel, NULL) == 0);
     env.curr_thread->status = lutf_WAIT;
@@ -273,6 +302,7 @@ int lutf_wait(lutf_thread_t *thread) {
 }
 
 int lutf_sleep(lutf_thread_t *thread, size_t sec) {
+    err_handle(ERR_TIME);
     thread->status      = lutf_SLEEP;
     thread->resume_time = clock() + sec * CLOCKS_PER_SEC;
     raise(SIGALRM);
@@ -321,6 +351,7 @@ int lutf_cancel(lutf_thread_t *thread) {
 }
 
 lutf_S_t *lutf_createS(int ss) {
+    err_handle(ERR_TIME);
     lutf_S_t *s;
     s = malloc(sizeof(lutf_S_t));
     assert(s != NULL);
@@ -331,6 +362,7 @@ lutf_S_t *lutf_createS(int ss) {
 }
 
 int lutf_P(lutf_S_t *s) {
+    err_handle(ERR_TIME);
     if (s->s > 0) {
         s->s -= 1;
         assert(setitimer(ITIMER_REAL, &tick_cancel, NULL) == 0);
@@ -349,6 +381,7 @@ int lutf_P(lutf_S_t *s) {
 }
 
 int lutf_V(lutf_S_t *s) {
+    err_handle(ERR_TIME);
     if (s->s >= 0) {
         s->s += 1;
     }

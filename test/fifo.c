@@ -84,7 +84,7 @@ static int _join_exit(void) {
 static int _million(void) {
     assert(lutf_init() == 0);
 // BUG: COUNT 取 4, 8, 12, 16 等数时 ret 最后一项无法正确输出
-#define COUNT 4
+#define COUNT 16
 
     lutf_thread_t *threads =
         (lutf_thread_t *)malloc(COUNT * sizeof(lutf_thread_t));
@@ -94,10 +94,27 @@ static int _million(void) {
         arg[i] = i;
         printf("arg: %d\n", arg[i]);
     }
-    for (size_t i = 0; i < COUNT; i++) {
+    for (size_t i = 0; i < COUNT / 2; i++) {
         assert(lutf_create(&threads[i], test4, (void *)&arg[i]) == 0);
     }
-    for (size_t i = 0; i < COUNT; i++) {
+    for (size_t i = 0; i < COUNT / 2; i++) {
+        lutf_join(&threads[i], &ret[i]);
+        printf("ret: %d\n", *(uint32_t *)ret[i]);
+    }
+    printf("456789\n");
+    sleep(1);
+    int s = 0;
+    for (int i = 0; i < 10000; i++) {
+        for (int j = 0; j < 10000; j++) {
+            for (int k = 0; k < 100; k++) {
+                s += i * j;
+            }
+        }
+    }
+    for (size_t i = COUNT / 2; i < COUNT; i++) {
+        assert(lutf_create(&threads[i], test4, (void *)&arg[i]) == 0);
+    }
+    for (size_t i = COUNT / 2; i < COUNT; i++) {
         lutf_join(&threads[i], &ret[i]);
         printf("ret: %d\n", *(uint32_t *)ret[i]);
     }
@@ -116,15 +133,14 @@ int fifo(void) {
     assert(_create() == 0);
     printf("----join_exit----\n");
     printf("Create a thread, run and output its return value.\n");
-    printf(
-        "Functions used are: lutf_init, lutf_create, lutf_join, lutf_exit.\n");
+    printf("Functions used are: lutf_init, lutf_create, lutf_join, "
+           "lutf_exit.\n");
     assert(_join_exit() == 0);
-    // printf("----million----\n");
-    // printf("Create a million threads, run and output its return value.\n");
-    // printf(
-    //     "Functions used are: lutf_init, lutf_create, lutf_join,
-    //     lutf_exit.\n");
-    // assert(_million() == 0);
+    printf("----million----\n");
+    printf("Create a million threads, run and output its return value.\n");
+    printf("Functions used are: lutf_init, lutf_create, lutf_join, "
+           "lutf_exit.\n");
+    assert(_million() == 0);
     printf("--------FIFO END--------\n");
     return 0;
 }
