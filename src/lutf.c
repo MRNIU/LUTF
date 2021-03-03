@@ -13,6 +13,7 @@ extern "C" {
 #include "stdlib.h"
 #include "assert.h"
 #include "sys/time.h"
+#include "time.h"
 #include "lutf.h"
 
 // TODO: 使用 sigaction 替换 signal
