@@ -86,7 +86,6 @@ static int _wait(lutf_thread_t *thread) {
 static void sig_alarm_handler(int signo __attribute__((unused))) {
     if (setjmp(env.curr_thread->context) == 0) {
         do {
-            printf("123\n");
             // 切换到下个线程
             env.curr_thread = env.curr_thread->next;
             if (env.curr_thread == env.main_thread) {
@@ -121,13 +120,13 @@ static void sig_alarm_handler(int signo __attribute__((unused))) {
             }
             // 循环直到 RUNNING 状态的线程
         } while (env.curr_thread->status != lutf_RUNNING);
-        struct itimerval tick = {
-            .it_interval.tv_sec  = tick_once.it_interval.tv_sec,
-            .it_interval.tv_usec = tick_once.it_interval.tv_usec,
-            .it_value.tv_sec     = tick_once.it_value.tv_sec,
-            .it_value.tv_usec    = tick_once.it_value.tv_usec,
-        };
         if (env.sched_method == TIME) {
+            struct itimerval tick = {
+                .it_interval.tv_sec  = tick_once.it_interval.tv_sec,
+                .it_interval.tv_usec = tick_once.it_interval.tv_usec,
+                .it_value.tv_sec     = tick_once.it_value.tv_sec,
+                .it_value.tv_usec    = tick_once.it_value.tv_usec,
+            };
             // 根据优先级调整运行时间
             switch (env.curr_thread->prior) {
                 case LOW: {
@@ -267,7 +266,7 @@ int lutf_join(lutf_thread_t *thread, void **ret) {
         if (env.sched_method == TIME) {
             raise(SIGALRM);
         }
-        else {
+        else if (env.sched_method == FIFO) {
             sig_alarm_handler(SIGALRM);
         }
     }

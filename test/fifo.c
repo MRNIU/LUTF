@@ -12,6 +12,7 @@ extern "C" {
 #include "assert.h"
 #include "stdio.h"
 #include "unistd.h"
+#include "time.h"
 #include "lutf.h"
 
 static void *test1(void *arg) {
@@ -84,7 +85,7 @@ static int _join_exit(void) {
 static int _million(void) {
     assert(lutf_init() == 0);
 // BUG: COUNT 取 4, 8, 12, 16 等数时 ret 最后一项无法正确输出
-#define COUNT 16
+#define COUNT 4
 
     lutf_thread_t *threads =
         (lutf_thread_t *)malloc(COUNT * sizeof(lutf_thread_t));
@@ -101,16 +102,9 @@ static int _million(void) {
         lutf_join(&threads[i], &ret[i]);
         printf("ret: %d\n", *(uint32_t *)ret[i]);
     }
-    printf("456789\n");
-    sleep(1);
-    int s = 0;
-    for (int i = 0; i < 10000; i++) {
-        for (int j = 0; j < 10000; j++) {
-            for (int k = 0; k < 100; k++) {
-                s += i * j;
-            }
-        }
-    }
+    printf("Wait a second.\n");
+    for (int i = 0; i < CLOCKS_PER_SEC * 500; i++)
+        ;
     for (size_t i = COUNT / 2; i < COUNT; i++) {
         assert(lutf_create(&threads[i], test4, (void *)&arg[i]) == 0);
     }
