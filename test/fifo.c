@@ -83,8 +83,7 @@ static int _join_exit(void) {
 // 百万级测试
 static int _million(void) {
     assert(lutf_init() == 0);
-// BUG: COUNT 取 4, 8, 12, 16 等数时 ret 最后一项无法正确输出
-#define COUNT 1024
+#define COUNT 64
 
     lutf_thread_t *threads =
         (lutf_thread_t *)malloc(COUNT * sizeof(lutf_thread_t));
