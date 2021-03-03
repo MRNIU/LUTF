@@ -57,11 +57,9 @@ make gcc-10
 
 
 
-
-
-
-
 ## 原理 Principle
+
+
 
 
 ##  使用方法 Usage
@@ -81,6 +79,16 @@ make gcc-10
 ## 开发 Dev
 
 LUTF 使用 cmake 构建
+
+```shell
+git clone https://github.com/MRNIU/LUTF.git
+cd LUTF/
+mkdir build
+cmake -DCMAKE_BUILD_TYPE=DEBUG ..
+make
+```
+
+
 
 ## 参考 Refs
 

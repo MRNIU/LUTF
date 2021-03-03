@@ -40,6 +40,9 @@ struct itimerval tick_cancel = {
     .it_value.tv_usec    = 0,
 };
 
+// 用于获取剩余时间
+struct itimerval old_tick;
+
 static int _wait(lutf_thread_t *thread) {
     lutf_thread_t *p;
     p = thread;
@@ -76,6 +79,9 @@ static void sig_alarm_handler(int signo __attribute__((unused))) {
                     break;
                 }
                 case lutf_SLEEP: {
+                    if (clock() > env.curr_thread->resume_time) {
+                        env.curr_thread->status = lutf_RUNNING;
+                    }
                     break;
                 }
                 // 跳过
@@ -86,8 +92,33 @@ static void sig_alarm_handler(int signo __attribute__((unused))) {
             }
             // 循环直到 RUNNING 状态的线程
         } while (env.curr_thread->status != lutf_RUNNING);
+        struct itimerval tick = {
+            .it_interval.tv_sec  = tick_once.it_interval.tv_sec,
+            .it_interval.tv_usec = tick_once.it_interval.tv_usec,
+            .it_value.tv_sec     = tick_once.it_value.tv_sec,
+            .it_value.tv_usec    = tick_once.it_value.tv_usec,
+        };
+        if (env.sched_method == TIME) {
+            // 根据优先级调整运行时间
+            switch (env.curr_thread->prior) {
+                case LOW: {
+                    tick.it_value.tv_sec /= 2;
+                    tick.it_value.tv_usec /= 2;
+                    break;
+                }
+                case MID: {
+                    break;
+                }
+                case HIGH: {
+                    tick.it_value.tv_sec *= 2;
+                    tick.it_value.tv_usec *= 2;
+                    break;
+                }
+            }
+        }
         // 开启 timer
-        assert(setitimer(ITIMER_REAL, &tick_once, NULL) == 0);
+        assert(setitimer(ITIMER_VIRTUAL, &tick, NULL) == 0);
+        // getitimer(ITIMER_VIRTUAL, &left);
         // 开始执行
         // 会返回到 lutf_join 处的 setjmp
         longjmp(env.curr_thread->context, 1);
@@ -118,8 +149,23 @@ int lutf_init(void) {
     env.nid         = 1;
     env.main_thread = thread_main;
     env.curr_thread = thread_main;
+    // 默认为 FIFO
+    env.sched_method = FIFO;
+    // 优先级默认低
+    env.curr_thread->prior = LOW;
     // 开启 timer
-    assert(setitimer(ITIMER_REAL, &tick_once, NULL) == 0);
+    assert(setitimer(ITIMER_VIRTUAL, &tick_once, NULL) == 0);
+    return 0;
+}
+
+int lutf_set_sched_method(lutf_sched_t sched) {
+    env.sched_method = sched;
+    return 0;
+}
+
+int lutf_set_prior(lutf_thread_t *thread, lutf_prior_t p) {
+    assert(env.sched_method != FIFO);
+    thread->prior = p;
     return 0;
 }
 
@@ -128,7 +174,7 @@ int lutf_create(lutf_thread_t *thread, lutf_fun_t fun, void *arg) {
     // id 默认为 -1
     thread->id = -1;
     // 设置为 READY
-    thread->status = lutf_RUNNING;
+    thread->status = lutf_READY;
     // 要执行的函数指针
     thread->func = fun;
     // 参数
@@ -137,6 +183,7 @@ int lutf_create(lutf_thread_t *thread, lutf_fun_t fun, void *arg) {
     thread->exit_value = NULL;
     thread->prev       = thread;
     thread->next       = thread;
+    thread->prior      = MID;
     return 0;
 }
 
@@ -175,8 +222,9 @@ int lutf_join(lutf_thread_t *thread, void **ret) {
     // 这时 env->curr_thread 指向新的线程
     else {
         // 取消所有定时器，这样可以保证线程的 FIFO
-        // 缺点是如果当前线程执行时间过长，lutf 无法利用这段时间
-        assert(setitimer(ITIMER_REAL, &tick_cancel, NULL) == 0);
+        if (env.sched_method == FIFO) {
+            assert(setitimer(ITIMER_VIRTUAL, &tick_cancel, NULL) == 0);
+        }
         // 执行函数
         env.curr_thread->func(env.curr_thread->arg);
         if (ret != NULL) {
@@ -192,7 +240,7 @@ int lutf_join(lutf_thread_t *thread, void **ret) {
 int lutf_exit(void *value) {
     // 如果只剩 main 线程，结束 lutf
     if (env.curr_thread == env.main_thread) {
-        assert(setitimer(ITIMER_REAL, &tick_cancel, NULL) == 0);
+        assert(setitimer(ITIMER_VIRTUAL, &tick_cancel, NULL) == 0);
         // 释放 main 信息占用空间
         free(env.curr_thread);
     }
@@ -205,11 +253,18 @@ int lutf_exit(void *value) {
 
 int lutf_wait(lutf_thread_t *thread) {
     // 停止定时器
-    assert(setitimer(ITIMER_REAL, &tick_cancel, NULL) == 0);
+    assert(setitimer(ITIMER_VIRTUAL, &tick_cancel, NULL) == 0);
     env.curr_thread->status = lutf_WAIT;
     thread->waited          = env.curr_thread;
     raise(SIGALRM);
     return thread->status;
+}
+
+int lutf_sleep(lutf_thread_t *thread, size_t sec) {
+    thread->status      = lutf_SLEEP;
+    thread->resume_time = clock() + sec * CLOCKS_PER_SEC;
+    raise(SIGALRM);
+    return 0;
 }
 
 lutf_thread_t *lutf_self(void) {
@@ -266,7 +321,7 @@ lutf_S_t *lutf_createS(int ss) {
 int lutf_P(lutf_S_t *s) {
     if (s->s > 0) {
         s->s -= 1;
-        assert(setitimer(ITIMER_REAL, &tick_cancel, NULL) == 0);
+        assert(setitimer(ITIMER_VIRTUAL, &tick_cancel, NULL) == 0);
     }
     else {
         s->s -= 1;
@@ -289,7 +344,7 @@ int lutf_V(lutf_S_t *s) {
         s->s += 1;
         s->queue[labs(s->s)]->status = lutf_RUNNING;
     }
-    assert(setitimer(ITIMER_REAL, &tick_cancel, NULL) == 0);
+    assert(setitimer(ITIMER_VIRTUAL, &tick_cancel, NULL) == 0);
     return 0;
 }
 

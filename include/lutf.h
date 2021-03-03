@@ -48,7 +48,7 @@ extern "C" {
 #include "setjmp.h"
 
 // 时间片 ms
-#define SLICE (300)
+#define SLICE (1000)
 // 线程栈大小
 #define LUTF_STACK_SIZE (4096)
 //信号量数量
@@ -56,7 +56,8 @@ extern "C" {
 
 // 线程状态
 typedef enum lutf_status {
-    lutf_RUNNING = 0,
+    lutf_READY = 0,
+    lutf_RUNNING,
     lutf_EXIT,
     lutf_WAIT,
     lutf_SEM,
@@ -89,6 +90,11 @@ typedef struct lutf_thread {
     struct lutf_thread *next;
     // 等待队列
     struct lutf_thread *waited;
+    // 以下参数仅在基于时间的调度使用
+    // 优先级
+    int prior;
+    // 唤醒时间，在 TIME 中 sleep 使用
+    size_t resume_time;
 } lutf_thread_t;
 
 // 信号量
@@ -98,6 +104,19 @@ typedef struct lutf_S {
     lutf_thread_t **queue;
 } lutf_S_t;
 
+// 调度方式
+typedef enum {
+    FIFO = 1,
+    TIME = 2,
+} lutf_sched_t;
+
+// 优先级
+typedef enum {
+    LOW  = 1,
+    MID  = 2,
+    HIGH = 3,
+} lutf_prior_t;
+
 // 全局状态
 typedef struct lutf_env {
     // 有 n 个线程
@@ -106,11 +125,22 @@ typedef struct lutf_env {
     lutf_thread_t *main_thread;
     // 当前线程
     lutf_thread_t *curr_thread;
+    // 调度方式
+    lutf_sched_t sched_method;
 } lutf_env_t;
 
 // LUTF 初始化
 // 返回值：成功返回 0
 int lutf_init(void);
+// 设置调度方式
+// sched_method: 调度方式
+// 返回值：成功返回 0
+int lutf_set_sched_method(lutf_sched_t sched_method);
+// 设置优先级
+// thread: 要设置的线程
+// p: 优先级
+// 返回值：成功返回 0
+int lutf_set_prior(lutf_thread_t *thread, lutf_prior_t p);
 // 线程创建
 // thread: 线程结构
 // fun: 要执行的函数
@@ -127,6 +157,11 @@ int lutf_join(lutf_thread_t *thread, void **ret);
 int lutf_exit(void *value);
 // 等待线程执行完毕
 int lutf_wait(lutf_thread_t *thread);
+// 线程睡眠
+// thread: 要睡眠的线程
+// sec: 要睡眠的时间，单位为秒
+// 返回值：成功返回 0
+int lutf_sleep(lutf_thread_t *thread, size_t sec);
 // 获取当前线程结构
 // 返回值：当前线程结构
 lutf_thread_t *lutf_self(void);

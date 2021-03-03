@@ -15,8 +15,10 @@ typedef int (*UnitTestFunction)(void);
 
 void run_tests(UnitTestFunction *tests);
 
-// 基本操作
-int basic(void);
+// FIFO
+int fifo(void);
+// TIME
+int time(void);
 // 任务管理
 int test_manage(void);
 
