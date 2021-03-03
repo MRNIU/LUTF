@@ -18,7 +18,7 @@ void run_tests(UnitTestFunction *tests);
 // FIFO
 int fifo(void);
 // TIME
-int time(void);
+int time_(void);
 // 任务管理
 int test_manage(void);
 

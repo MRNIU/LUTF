@@ -131,11 +131,7 @@ typedef struct lutf_env {
 
 // LUTF 初始化
 // 返回值：成功返回 0
-int lutf_init(void);
-// 设置调度方式
-// sched_method: 调度方式
-// 返回值：成功返回 0
-int lutf_set_sched_method(lutf_sched_t sched_method);
+int lutf_init(lutf_sched_t method);
 // 设置优先级
 // thread: 要设置的线程
 // p: 优先级

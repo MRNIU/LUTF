@@ -154,7 +154,7 @@ static void sig_alarm_handler(int signo __attribute__((unused))) {
     return;
 }
 
-int lutf_init(void) {
+int lutf_init(lutf_sched_t method) {
     // 初始化 main 线程信息
     lutf_thread_t *thread_main = (lutf_thread_t *)malloc(sizeof(lutf_thread_t));
     assert(thread_main != NULL);
@@ -172,12 +172,11 @@ int lutf_init(void) {
     thread_main->prev = thread_main;
     thread_main->next = thread_main;
     // 更新全局信息
-    env.nid         = 1;
-    env.main_thread = thread_main;
-    env.curr_thread = thread_main;
-    // 默认为 FIFO
-    env.sched_method = FIFO;
-    if (env.sched_method == TIME) {
+    env.nid          = 1;
+    env.main_thread  = thread_main;
+    env.curr_thread  = thread_main;
+    env.sched_method = method;
+    if (method == TIME) {
         // 优先级默认低
         env.curr_thread->prior = LOW;
         // 注册信号处理函数
@@ -185,15 +184,10 @@ int lutf_init(void) {
         // 开启 timer
         assert(setitimer(ITIMER_REAL, &tick_once, NULL) == 0);
     }
-    else if (env.sched_method == FIFO) {
+    else if (method == FIFO) {
         // FIFO 方式则手动调用
         sig_alarm_handler(SIGALRM);
     }
-    return 0;
-}
-
-int lutf_set_sched_method(lutf_sched_t sched) {
-    env.sched_method = sched;
     return 0;
 }
 

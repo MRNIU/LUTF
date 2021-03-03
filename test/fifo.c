@@ -63,7 +63,7 @@ static int _create(void) {
 }
 
 static int _join_exit(void) {
-    assert(lutf_init() == 0);
+    assert(lutf_init(FIFO) == 0);
     lutf_thread_t task[3];
     void *        ret[3];
     char *        arg[3] = {"This is test1 arg", "This is test2 arg",
@@ -83,7 +83,7 @@ static int _join_exit(void) {
 
 // 百万级测试
 static int _million(void) {
-    assert(lutf_init() == 0);
+    assert(lutf_init(FIFO) == 0);
 // BUG: COUNT 取 4, 8, 12, 16 等数时 ret 最后一项无法正确输出
 // 在最新版 osx 上的 gcc-10/clang 出现
 #define COUNT 6400000
