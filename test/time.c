@@ -13,25 +13,32 @@ extern "C" {
 #include "stdio.h"
 #include "unistd.h"
 #include "time.h"
+#include "string.h"
 #include "lutf.h"
 
 static void *test1(void *arg) {
     printf("test1\n");
-    printf("arg: %s\n", (char *)arg);
+    if (arg != NULL) {
+        printf("arg: %s\n", (char *)arg);
+    }
     lutf_exit((void *)"This is test1 exit value");
     return NULL;
 }
 
 static void *test2(void *arg) {
     printf("test2\n");
-    printf("arg: %s\n", (char *)arg);
+    if (arg != NULL) {
+        printf("arg: %s\n", (char *)arg);
+    }
     lutf_exit((void *)"This is test2 exit value");
     return NULL;
 }
 
 static void *test3(void *arg) {
     printf("test3\n");
-    printf("arg: %s\n", (char *)arg);
+    if (arg != NULL) {
+        printf("arg: %s\n", (char *)arg);
+    }
     lutf_exit((void *)"This is test3 exit value");
     return NULL;
 }
@@ -51,7 +58,7 @@ static void *test5(void *arg) {
         printf("arg: %d\n", *(uint32_t *)arg);
     }
     // Do some calculations
-    for (size_t i = 0; i < CLOCKS_PER_SEC * 500; i++) {
+    for (size_t i = 0; i < CLOCKS_PER_SEC; i++) {
         ;
     }
     lutf_exit(arg);
@@ -68,11 +75,11 @@ static int _join_exit(void) {
     assert(lutf_create(&task[1], test2, arg[1]) == 0);
     assert(lutf_create(&task[2], test3, arg[2]) == 0);
     lutf_join(&task[0], &ret[0]);
-    printf("%s\n", (char *)ret[0]);
+    assert(strcmp("This is test1 exit value", (char *)ret[0]) == 0);
     lutf_join(&task[1], &ret[1]);
-    printf("%s\n", (char *)ret[1]);
+    assert(strcmp("This is test1 exit value", (char *)ret[1]) == 0);
     lutf_join(&task[2], &ret[2]);
-    printf("%s\n", (char *)ret[2]);
+    assert(strcmp("This is test1 exit value", (char *)ret[2]) == 0);
     lutf_exit(0);
     return 0;
 }
@@ -145,21 +152,21 @@ int time_(void) {
     printf("Create a thread, run and output its return value.\n");
     printf("Functions used: lutf_init, lutf_create, lutf_join, lutf_exit.\n");
     assert(_join_exit() == 0);
-    printf("----wait----\n");
-    assert(_wait() == 0);
-    printf("----self----\n");
-    assert(_self() == 0);
-    printf("----equal----\n");
-    assert(_equal() == 0);
-    printf("----cancel----\n");
-    assert(_cancel() == 0);
-    printf("----sync----\n");
-    assert(_sync() == 0);
-    // printf("----million----\n");
-    // printf("Create a million threads, run and output its return value.\n");
-    // printf("Functions used are: lutf_init, lutf_create, lutf_join, "
-    //        "lutf_exit.\n");
-    // assert(_million() == 0);
+    // printf("----wait----\n");
+    // assert(_wait() == 0);
+    // printf("----self----\n");
+    // assert(_self() == 0);
+    // printf("----equal----\n");
+    // assert(_equal() == 0);
+    // printf("----cancel----\n");
+    // assert(_cancel() == 0);
+    // printf("----sync----\n");
+    // assert(_sync() == 0);
+    printf("----million----\n");
+    printf("Create a million threads, run and output its return value.\n");
+    printf("Functions used are: lutf_init, lutf_create, lutf_join, "
+           "lutf_exit.\n");
+    assert(_million() == 0);
     printf("--------TIME END--------\n");
     return 0;
 }

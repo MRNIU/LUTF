@@ -13,32 +13,45 @@ extern "C" {
 #include "stdio.h"
 #include "unistd.h"
 #include "time.h"
+#include "string.h"
 #include "lutf.h"
 
 static void *test1(void *arg) {
     printf("test1\n");
-    printf("arg: %s\n", (char *)arg);
+    if (arg != NULL) {
+        printf("arg: %s\n", (char *)arg);
+    }
     lutf_exit((void *)"This is test1 exit value");
     return NULL;
 }
 
 static void *test2(void *arg) {
     printf("test2\n");
-    printf("arg: %s\n", (char *)arg);
+    if (arg != NULL) {
+        printf("arg: %s\n", (char *)arg);
+    }
     lutf_exit((void *)"This is test2 exit value");
     return NULL;
 }
 
 static void *test3(void *arg) {
     printf("test3\n");
-    printf("arg: %s\n", (char *)arg);
+    if (arg != NULL) {
+        printf("arg: %s\n", (char *)arg);
+    }
     lutf_exit((void *)"This is test3 exit value");
     return NULL;
 }
 
 static void *test4(void *arg) {
     printf("test4\n");
-    printf("arg: %d\n", *(uint32_t *)arg);
+    if (arg != NULL) {
+        printf("arg: %d\n", *(uint32_t *)arg);
+    }
+    // Do some calculations
+    for (size_t i = 0; i < CLOCKS_PER_SEC; i++) {
+        ;
+    }
     lutf_exit(arg);
     return NULL;
 }
@@ -72,11 +85,11 @@ static int _join_exit(void) {
     assert(lutf_create(&task[1], test2, arg[1]) == 0);
     assert(lutf_create(&task[2], test3, arg[2]) == 0);
     lutf_join(&task[0], &ret[0]);
-    printf("%s\n", (char *)ret[0]);
+    assert(strcmp("This is test1 exit value", (char *)ret[0]) == 0);
     lutf_join(&task[1], &ret[1]);
-    printf("%s\n", (char *)ret[1]);
+    assert(strcmp("This is test2 exit value", (char *)ret[1]) == 0);
     lutf_join(&task[2], &ret[2]);
-    printf("%s\n", (char *)ret[2]);
+    assert(strcmp("This is test3 exit value", (char *)ret[2]) == 0);
     lutf_exit(0);
     return 0;
 }
@@ -101,7 +114,7 @@ static int _million(void) {
         assert(*(uint32_t *)ret[i] == i);
     }
     printf("Wait a second.\n");
-    for (int i = 0; i < CLOCKS_PER_SEC * 500; i++) {
+    for (int i = 0; i < CLOCKS_PER_SEC; i++) {
         ;
     }
     for (size_t i = COUNT / 2; i < COUNT; i++) {
