@@ -46,7 +46,7 @@ static void *test4(void *arg) {
 static void *test5(void *arg) {
     printf("test5\n");
     printf("arg: %d\n", *(uint32_t *)arg);
-    for (int i = 0; i < CLOCKS_PER_SEC * 500; i++) {
+    for (size_t i = 0; i < CLOCKS_PER_SEC * 500; i++) {
         ;
     }
     lutf_exit(arg);
@@ -108,15 +108,14 @@ static int _sync(void) {
 // 百万级测试
 static int _million(void) {
     assert(lutf_init(TIME) == 0);
-// BUG: COUNT 取 4, 8, 12, 16 等数时 ret 最后一项无法正确输出
-// 在最新版 osx 上的 gcc-10/clang 出现
-#define COUNT 64
+#define COUNT 4
     lutf_thread_t *threads =
         (lutf_thread_t *)malloc(COUNT * sizeof(lutf_thread_t));
-    void **   ret = malloc(COUNT * sizeof(uint32_t));
+    void **   ret = malloc(COUNT * sizeof(uint32_t *));
     uint32_t *arg = (uint32_t *)malloc(COUNT * sizeof(uint32_t));
     for (size_t i = 0; i < COUNT; i++) {
         arg[i] = i;
+        ret[i] = NULL;
         printf("arg: %d\n", arg[i]);
     }
     for (size_t i = 0; i < COUNT / 2; i++) {
@@ -127,7 +126,7 @@ static int _million(void) {
         printf("ret: %d\n", *(uint32_t *)ret[i]);
     }
     printf("Wait a second.\n");
-    for (int i = 0; i < CLOCKS_PER_SEC * 500; i++) {
+    for (size_t i = 0; i < CLOCKS_PER_SEC * 500; i++) {
         ;
     }
     for (size_t i = COUNT / 2; i < COUNT; i++) {

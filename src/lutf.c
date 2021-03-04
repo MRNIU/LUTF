@@ -43,7 +43,19 @@ struct itimerval tick_cancel = {
 };
 
 // 用于获取剩余时间
-struct itimerval old_tick;
+struct itimerval old_tick = {
+    .it_interval.tv_sec  = 0,
+    .it_interval.tv_usec = 0,
+    .it_value.tv_sec     = 0,
+    .it_value.tv_usec    = 0,
+};
+// TIME 方式下使用
+struct itimerval tick = {
+    .it_interval.tv_sec  = 0,
+    .it_interval.tv_usec = 0,
+    .it_value.tv_sec     = 0,
+    .it_value.tv_usec    = SLICE,
+};
 
 typedef enum {
     ERR_FIFO,
@@ -121,12 +133,6 @@ static void sig_alarm_handler(int signo __attribute__((unused))) {
             // 循环直到 RUNNING 状态的线程
         } while (env.curr_thread->status != lutf_RUNNING);
         if (env.sched_method == TIME) {
-            struct itimerval tick = {
-                .it_interval.tv_sec  = tick_once.it_interval.tv_sec,
-                .it_interval.tv_usec = tick_once.it_interval.tv_usec,
-                .it_value.tv_sec     = tick_once.it_value.tv_sec,
-                .it_value.tv_usec    = tick_once.it_value.tv_usec,
-            };
             // 根据优先级调整运行时间
             switch (env.curr_thread->prior) {
                 case LOW: {
