@@ -84,23 +84,21 @@ static int _join_exit(void) {
 // 百万级测试
 static int _million(void) {
     assert(lutf_init(FIFO) == 0);
-// BUG: COUNT 取 4, 8, 12, 16 等数时 ret 最后一项无法正确输出
-// 在最新版 osx 上的 gcc-10/clang 出现
 #define COUNT 6400000
     lutf_thread_t *threads =
         (lutf_thread_t *)malloc(COUNT * sizeof(lutf_thread_t));
-    void **   ret = malloc(COUNT * sizeof(uint32_t));
+    void **   ret = malloc(COUNT * sizeof(uint32_t *));
     uint32_t *arg = (uint32_t *)malloc(COUNT * sizeof(uint32_t));
     for (size_t i = 0; i < COUNT; i++) {
         arg[i] = i;
-        printf("arg: %d\n", arg[i]);
+        ret[i] = NULL;
     }
     for (size_t i = 0; i < COUNT / 2; i++) {
         assert(lutf_create(&threads[i], test4, (void *)&arg[i]) == 0);
     }
     for (size_t i = 0; i < COUNT / 2; i++) {
         lutf_join(&threads[i], &ret[i]);
-        printf("ret: %d\n", *(uint32_t *)ret[i]);
+        assert(*(uint32_t *)ret[i] == i);
     }
     printf("Wait a second.\n");
     for (int i = 0; i < CLOCKS_PER_SEC * 500; i++) {
@@ -111,7 +109,7 @@ static int _million(void) {
     }
     for (size_t i = COUNT / 2; i < COUNT; i++) {
         lutf_join(&threads[i], &ret[i]);
-        printf("ret: %d\n", *(uint32_t *)ret[i]);
+        assert(*(uint32_t *)ret[i] == i);
     }
     lutf_exit(0);
     return 0;

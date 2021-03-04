@@ -291,7 +291,7 @@ int lutf_exit(void *value) {
 }
 
 int lutf_wait(lutf_thread_t *thread) {
-    err_handle(ERR_TIME);
+    assert(env.sched_method == TIME);
     // 停止定时器
     assert(setitimer(ITIMER_REAL, &tick_cancel, NULL) == 0);
     env.curr_thread->status = lutf_WAIT;
