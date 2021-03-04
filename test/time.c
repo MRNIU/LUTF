@@ -77,9 +77,9 @@ static int _join_exit(void) {
     lutf_join(&task[0], &ret[0]);
     assert(strcmp("This is test1 exit value", (char *)ret[0]) == 0);
     lutf_join(&task[1], &ret[1]);
-    assert(strcmp("This is test1 exit value", (char *)ret[1]) == 0);
+    assert(strcmp("This is test2 exit value", (char *)ret[1]) == 0);
     lutf_join(&task[2], &ret[2]);
-    assert(strcmp("This is test1 exit value", (char *)ret[2]) == 0);
+    assert(strcmp("This is test3 exit value", (char *)ret[2]) == 0);
     lutf_exit(0);
     return 0;
 }
