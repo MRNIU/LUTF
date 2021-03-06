@@ -66,37 +66,35 @@ static void *test5(void *arg) {
 }
 
 static int _join_exit(void) {
-    assert(lutf_init(TIME) == 0);
-    lutf_thread_t task[3];
-    void *        ret[3];
-    char *        arg[3] = {"This is test1 arg", "This is test2 arg",
+    lutf_thread_t *threads = (lutf_thread_t *)malloc(3 * sizeof(lutf_thread_t));
+    void **        ret     = malloc(3 * sizeof(uint32_t *));
+    char *         arg[3]  = {"This is test1 arg", "This is test2 arg",
                     "This is test3 arg"};
-    assert(lutf_create(&task[0], test1, arg[0]) == 0);
-    assert(lutf_create(&task[1], test2, arg[1]) == 0);
-    assert(lutf_create(&task[2], test3, arg[2]) == 0);
-    lutf_join(&task[0], &ret[0]);
+    assert(lutf_create(&threads[0], test1, arg[0]) == 0);
+    assert(lutf_create(&threads[1], test5, arg[1]) == 0);
+    assert(lutf_create(&threads[2], test3, arg[2]) == 0);
+    lutf_join(&threads[0], &ret[0]);
     assert(strcmp("This is test1 exit value", (char *)ret[0]) == 0);
-    lutf_join(&task[1], &ret[1]);
+    lutf_join(&threads[1], &ret[1]);
     assert(strcmp("This is test2 exit value", (char *)ret[1]) == 0);
-    lutf_join(&task[2], &ret[2]);
+    lutf_join(&threads[2], &ret[2]);
     assert(strcmp("This is test3 exit value", (char *)ret[2]) == 0);
-    lutf_exit(0);
     return 0;
 }
 
 static int _wait(void) {
-    assert(lutf_init(TIME) == 0);
-    lutf_thread_t task[3];
-    void *        ret[3];
-    assert(lutf_create(&task[0], test3, NULL) == 0);
-    assert(lutf_create(&task[1], test4, NULL) == 0);
-    assert(lutf_create(&task[2], test5, NULL) == 0);
-    lutf_join(&task[0], NULL);
-    lutf_join(&task[1], NULL);
-    lutf_join(&task[2], &ret[2]);
-    // lutf_wait(&task[2]);
+    // BUG：时钟中断后这里的函数会继续执行，导致 test 中的 while 停掉
+    // 得改成，main 线程等待的线程全部结束后退出
+    lutf_thread_t *threads = (lutf_thread_t *)malloc(3 * sizeof(lutf_thread_t));
+    void **        ret     = malloc(3 * sizeof(uint32_t *));
+    assert(lutf_create(&threads[0], test3, NULL) == 0);
+    assert(lutf_create(&threads[1], test4, NULL) == 0);
+    assert(lutf_create(&threads[2], test5, NULL) == 0);
+    lutf_join(&threads[0], NULL);
+    lutf_join(&threads[1], NULL);
+    lutf_join(&threads[2], &ret[2]);
+    lutf_wait(&threads[2]);
     printf("%s\n", (char *)ret[2]);
-    lutf_exit(0);
     return 0;
 }
 static int _self(void) {
@@ -114,8 +112,7 @@ static int _sync(void) {
 
 // 百万级测试
 static int _million(void) {
-    assert(lutf_init(TIME) == 0);
-#define COUNT 6400000
+#define COUNT 4
     lutf_thread_t *threads =
         (lutf_thread_t *)malloc(COUNT * sizeof(lutf_thread_t));
     void **   ret = malloc(COUNT * sizeof(uint32_t *));
@@ -138,7 +135,6 @@ static int _million(void) {
         lutf_join(&threads[i], &ret[i]);
         assert(*(uint32_t *)ret[i] == i);
     }
-    lutf_exit(0);
     return 0;
 }
 
@@ -148,9 +144,10 @@ int time_(void) {
     printf("--------TIME--------\n");
     printf(
         "In this mode, threads will be scheduled based on time resources.\n");
+    lutf_set_sched(TIME);
     printf("----join_exit----\n");
     printf("Create a thread, run and output its return value.\n");
-    printf("Functions used: lutf_init, lutf_create, lutf_join, lutf_exit.\n");
+    printf("Functions used: lutf_create, lutf_join, lutf_exit.\n");
     assert(_join_exit() == 0);
     // printf("----wait----\n");
     // assert(_wait() == 0);
@@ -162,11 +159,10 @@ int time_(void) {
     // assert(_cancel() == 0);
     // printf("----sync----\n");
     // assert(_sync() == 0);
-    printf("----million----\n");
-    printf("Create a million threads, run and output its return value.\n");
-    printf("Functions used are: lutf_init, lutf_create, lutf_join, "
-           "lutf_exit.\n");
-    assert(_million() == 0);
+    // printf("----million----\n");
+    // printf("Create a million threads, run and output its return value.\n");
+    // printf("Functions used are: lutf_create, lutf_join, lutf_exit.\n");
+    // assert(_million() == 0);
     printf("--------TIME END--------\n");
     return 0;
 }

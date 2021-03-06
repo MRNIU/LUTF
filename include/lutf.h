@@ -48,7 +48,7 @@ extern "C" {
 #include "setjmp.h"
 
 // 时间片 ms
-#define SLICE (1000)
+#define SLICE (20)
 // 线程栈大小
 #define LUTF_STACK_SIZE (4096)
 //信号量数量
@@ -88,7 +88,7 @@ typedef struct lutf_thread {
     struct lutf_thread *prev;
     // 下一个线程
     struct lutf_thread *next;
-    // 等待队列
+    // 等待
     struct lutf_thread *waited;
     // 以下参数仅在基于时间的调度使用
     // 优先级
@@ -129,9 +129,10 @@ typedef struct lutf_env {
     lutf_sched_t sched_method;
 } lutf_env_t;
 
-// LUTF 初始化
+// 设置调度方式
+// method: 调度方式
 // 返回值：成功返回 0
-int lutf_init(lutf_sched_t method);
+int lutf_set_sched(lutf_sched_t method);
 // 设置优先级
 // thread: 要设置的线程
 // p: 优先级
@@ -151,7 +152,9 @@ int lutf_join(lutf_thread_t *thread, void **ret);
 // 线程退出
 // value: 退出参数
 int lutf_exit(void *value);
-// 等待线程执行完毕
+// 当前线程等待 thread 结束
+// thread: 要等待的线程
+// 返回值：成功返回 0
 int lutf_wait(lutf_thread_t *thread);
 // 线程睡眠
 // thread: 要睡眠的线程

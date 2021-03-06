@@ -18,6 +18,7 @@ static int run_test(UnitTestFunction test) {
 }
 
 void run_tests(UnitTestFunction *tests) {
+    printf("----------------TEST----------------\n");
     for (int i = 0; tests[i] != NULL; i++) {
         assert(run_test(tests[i]) == 0);
     }
@@ -25,15 +26,15 @@ void run_tests(UnitTestFunction *tests) {
 }
 
 static UnitTestFunction tests[] = {
-    // fifo,
-    time_,
+    fifo,
+    // time_,
     NULL,
 };
 
 int main(int    argc __attribute__((unused)),
          char **argv __attribute__((unused))) {
     run_tests(tests);
-    printf("test done\n");
+    printf("----------------TEST END----------------\n");
     return 0;
 }
 
