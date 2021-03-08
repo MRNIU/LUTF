@@ -12,7 +12,8 @@ project(LUTF C)
 set(CMAKE_C_STANDARD 11)
 
 # Set common flags
-set(CMAKE_C_FLAGS_DEBUG "-Wall -Wextra -g -ggdb -O0 -fprofile-arcs -ftest-coverage")
+# set(CMAKE_C_FLAGS_DEBUG "-Wall -Wextra -g -ggdb -O0 -fprofile-arcs -ftest-coverage")
+set(CMAKE_C_FLAGS_DEBUG "-Wall -Wextra -g -ggdb -O0")
 set(CMAKE_C_FLAGS_RELEASE "-Wall -Wextra -Werror -O0")
 
 set(LIBNAME lutf)

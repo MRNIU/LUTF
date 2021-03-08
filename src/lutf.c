@@ -25,14 +25,6 @@ static lutf_env_t env = {
     .curr_thread = NULL,
 };
 
-// 仅触发一次定时器
-struct itimerval tick_once = {
-    .it_interval.tv_sec  = 0,
-    .it_interval.tv_usec = 0,
-    .it_value.tv_sec     = 0,
-    .it_value.tv_usec    = SLICE,
-};
-
 // 取消所有定时
 struct itimerval tick_cancel = {
     .it_interval.tv_sec  = 0,
@@ -48,7 +40,7 @@ struct itimerval old_tick = {
     .it_value.tv_sec     = 0,
     .it_value.tv_usec    = 0,
 };
-// TIME 方式下使用
+
 struct itimerval tick_low = {
     .it_interval.tv_sec  = 0,
     .it_interval.tv_usec = 0,
@@ -79,86 +71,228 @@ typedef enum {
     ERR_TIME,
 } err_t;
 
-static void err_handle(err_t no) {
-    switch (no) {
-        case ERR_FIFO: {
-            printf("You need in FIFO mode.\n");
-            break;
-        }
-        case ERR_TIME: {
-            printf("You need in TIME mode.\n");
-            break;
-        }
-        default: {
-            break;
-        }
+// 释放 list
+// list: 要释放的 list
+static void list_free(lutf_entry_t *list) {
+    lutf_entry_t *entry;
+    entry = list;
+    while (entry != NULL) {
+        lutf_entry_t *next;
+        next = entry->next;
+        free(entry);
+        entry = next;
     }
     return;
 }
 
-// thread 要等待其 wait 队列为空才能退出
-static int _wait(lutf_thread_t *thread) {
-    // lutf_thread_t *p    = thread->wait;
-    // int            flag = 1;
-    // printf("1\n");
-    // for (size_t i = 0; i < thread->wait_num; i++) {
-    //     if (p[i].status != lutf_EXIT) {
-    //         flag = 0;
-    //     }
-    // }
-    // if (flag) {
-    //     thread->status = lutf_RUNNING;
-    // }
-    lutf_thread_t *p;
-    p = thread;
-    do {
-        p = p->next;
-        if (p->waited == thread) {
-            if (p->status == lutf_EXIT) {
-                thread->status = lutf_RUNNING;
-                break;
-            }
+// 在 list 头部插入
+// list: 要插入的链表
+// data: 要插入的数据
+// 返回值：成功返回新链表项，失败返回 NULL
+static lutf_entry_t *list_prepend(lutf_entry_t **list, lutf_thread_t *data) {
+    lutf_entry_t *newentry;
+    if (list == NULL) {
+        return NULL;
+    }
+    newentry = malloc(sizeof(lutf_entry_t));
+    if (newentry == NULL) {
+        return NULL;
+    }
+    newentry->data = data;
+    if (*list != NULL) {
+        (*list)->prev = newentry;
+    }
+    newentry->prev = NULL;
+    newentry->next = *list;
+    *list          = newentry;
+    return newentry;
+}
+
+// 在 list 尾部插入
+// list: 要插入的链表
+// data: 要插入的数据
+// 返回值：成功返回新链表项，失败返回 NULL
+static lutf_entry_t *list_append(lutf_entry_t **list, lutf_thread_t *data) {
+    lutf_entry_t *rover;
+    lutf_entry_t *newentry;
+    if (list == NULL) {
+        return NULL;
+    }
+    newentry = malloc(sizeof(lutf_entry_t));
+    if (newentry == NULL) {
+        return NULL;
+    }
+    newentry->data = data;
+    newentry->next = NULL;
+    if (*list == NULL) {
+        *list          = newentry;
+        newentry->prev = NULL;
+    }
+    else {
+        for (rover = *list; rover->next != NULL; rover = rover->next) {
+            ;
         }
-    } while (p != thread);
+        newentry->prev = rover;
+        rover->next    = newentry;
+    }
+    return newentry;
+}
+
+// 返回前一项
+// listentry: 要处理的链表项
+// 返回值：成功返回前一项，失败返回 NULL
+static lutf_entry_t *list_prev(lutf_entry_t *listentry) {
+    if (listentry == NULL) {
+        return NULL;
+    }
+    return listentry->prev;
+}
+
+// 返回下一项
+// listentry: 要处理的链表项
+// 返回值：成功返回下一项，失败返回 NULL
+static lutf_entry_t *list_next(lutf_entry_t *listentry) {
+    if (listentry == NULL) {
+        return NULL;
+    }
+    return listentry->next;
+}
+
+// 返回数据
+// listentry: 要处理的链表项
+// 返回值：成功返回数据，失败返回 NULL
+static lutf_thread_t *list_data(lutf_entry_t *listentry) {
+    if (listentry == NULL) {
+        return NULL;
+    }
+    return listentry->data;
+}
+
+// 链表第 n 项
+// list: 要处理的链表
+// n: 第 n 项
+// 返回值：成功返回链表项，失败返回 NULL
+static lutf_entry_t *list_nth_entry(lutf_entry_t *list, unsigned int n) {
+    lutf_entry_t *entry;
+    unsigned int  i;
+    entry = list;
+    for (i = 0; i < n; ++i) {
+        if (entry == NULL) {
+            return NULL;
+        }
+        entry = entry->next;
+    }
+    return entry;
+}
+
+// 链表第 n 项数据
+// list: 要处理的链表
+// n: 第 n 项
+// 返回值：成功返回链表项数据，失败返回 NULL
+static lutf_thread_t *list_nth_data(lutf_entry_t *list, unsigned int n) {
+    lutf_entry_t *entry;
+    entry = list_nth_entry(list, n);
+    if (entry == NULL) {
+        return NULL;
+    }
+    return entry->data;
+}
+
+// 返回链表长度
+// list: 要处理的链表
+// 返回值：链表长度
+static unsigned int list_length(lutf_entry_t *list) {
+    lutf_entry_t *entry;
+    unsigned int  length;
+    length = 0;
+    entry  = list;
+    while (entry != NULL) {
+        ++length;
+        entry = entry->next;
+    }
+    return length;
+}
+
+// 删除链表项
+// list: 要处理的链表
+// entry: 要删除的项
+// 返回值：成功返回 0
+static int list_remove_entry(lutf_entry_t **list, lutf_entry_t *entry) {
+    if (list == NULL || *list == NULL || entry == NULL) {
+        return 0;
+    }
+    if (entry->prev == NULL) {
+        *list = entry->next;
+        if (entry->next != NULL) {
+            entry->next->prev = NULL;
+        }
+    }
+    else {
+        entry->prev->next = entry->next;
+        if (entry->next != NULL) {
+            entry->next->prev = entry->prev;
+        }
+    }
+    free(entry);
     return 0;
 }
 
+// 锁，暂时关闭时钟
+#define TICK(x)                                                                \
+    do {                                                                       \
+        assert(setitimer(ITIMER_REAL, x, NULL) == 0);                          \
+    } while (0);
+
+#define UNTICK()                                                               \
+    do {                                                                       \
+        assert(setitimer(ITIMER_REAL, &tick_cancel, NULL) == 0);               \
+    } while (0);
+
+// 对周期处理的操作计数
+static size_t count = 0;
 // 时钟信号处理
 static void sig_alarm_handler(int signo __attribute__((unused))) {
-    if (setjmp(env.curr_thread->context) == 0) {
+    count++;
+    printf("sb env.curr_thread->id: %d, status: %d\n", env.curr_thread->id,
+           env.curr_thread->status);
+    if (sigsetjmp(env.curr_thread->context, 0) == 0) {
         do {
             // 切换到下个线程
             env.curr_thread = env.curr_thread->next;
-            if (env.curr_thread == env.main_thread) {
-                break;
-            }
             // 根据状态
             switch (env.curr_thread->status) {
                 // 跳过
                 case lutf_READY: {
-                    printf("READY\n");
+                    printf("READY: %d\n", env.curr_thread->id);
                     break;
                 }
                 case lutf_RUNNING: {
-                    printf("RUNNING\n");
+                    printf("RUNNING: %d\n", env.curr_thread->id);
                     break;
                 }
                 case lutf_WAIT: {
-                    printf("WAIT\n");
-                    _wait(env.curr_thread);
                     break;
                 }
                 case lutf_SLEEP: {
+                    printf("SLEEP\n");
                     if (clock() > env.curr_thread->resume_time) {
                         env.curr_thread->status = lutf_RUNNING;
                     }
                     break;
                 }
-                // 跳过
-                case lutf_EXIT: {
-                    printf("EXIT\n");
-                }
                 case lutf_SEM: {
+                    printf("SEM\n");
+                    break;
+                }
+                case lutf_EXIT: {
+                    printf("EXIT: %d\n", env.curr_thread->id);
+                    // TODO:
+                    // 将退出状态的线程从链表中删除，同时标记等待其完成的线程
+                    // 这一操作不能太频繁
+                    if (count % 1000 == 0) {
+                        ;
+                    }
+                    break;
                 }
             }
             // 循环直到 RUNNING 状态的线程
@@ -168,36 +302,38 @@ static void sig_alarm_handler(int signo __attribute__((unused))) {
             switch (env.curr_thread->prior) {
                 case LOW: {
                     // 开启 timer
-                    assert(setitimer(ITIMER_REAL, &tick_low, NULL) == 0);
+                    TICK(&tick_low)
                     break;
                 }
                 case MID: {
                     // 开启 timer
-                    assert(setitimer(ITIMER_REAL, &tick_mid, NULL) == 0);
+                    TICK(&tick_mid);
                     break;
                 }
                 case HIGH: {
                     // 开启 timer
-                    assert(setitimer(ITIMER_REAL, &tick_high, NULL) == 0);
+                    TICK(&tick_high);
                     break;
                 }
             }
             // 获取剩余时间
             // getitimer(ITIMER_REAL, &left);
         }
-        printf("env.curr_thread->id: %d\n", env.curr_thread->id);
-        printf("env.curr_thread->prev->id: %d\n", env.curr_thread->prev->id);
-        printf("env.curr_thread->next->id: %d\n", env.curr_thread->next->id);
+        printf("se env.curr_thread->id: %d, status: %d\n", env.curr_thread->id,
+               env.curr_thread->status);
+        // printf("env.curr_thread->prev->id: %d\n", env.curr_thread->prev->id);
+        // printf("env.curr_thread->next->id: %d\n", env.curr_thread->next->id);
         // 开始执行
         // 会返回到 lutf_join 处的 setjmp
-        longjmp(env.curr_thread->context, 1);
+        siglongjmp(env.curr_thread->context, 1);
     }
+    // ERROR: 从 setjmp 返回
+    printf("++++++\n");
     return;
 }
 
 // 构造函数，在 main 之前执行
 __attribute__((constructor)) static void init(void) {
-    printf("init\n");
     // 初始化 main 线程信息
     lutf_thread_t *thread_main = (lutf_thread_t *)malloc(sizeof(lutf_thread_t));
     assert(thread_main != NULL);
@@ -212,9 +348,9 @@ __attribute__((constructor)) static void init(void) {
     // 返回值默认为空
     thread_main->exit_value = NULL;
     // 初始化链表
-    thread_main->prev   = thread_main;
-    thread_main->next   = thread_main;
-    thread_main->waited = NULL;
+    thread_main->prev = thread_main;
+    thread_main->next = thread_main;
+    thread_main->wait = NULL;
     // 优先级默认低
     thread_main->prior       = MID;
     thread_main->resume_time = 0;
@@ -224,26 +360,39 @@ __attribute__((constructor)) static void init(void) {
     env.curr_thread = thread_main;
     // 默认调度方式
     env.sched_method = FIFO;
-    // 手动调用调度函数
-    sig_alarm_handler(SIGALRM);
     return;
 }
 
 // 析构函数，在 main 结束后执行
 __attribute__((destructor)) static void finit(void) {
-    // 如果只剩 main 线程，结束 lutf
-    if (env.main_thread != NULL) {
-        if (env.sched_method == TIME) {
-            // 取消时钟
-            assert(setitimer(ITIMER_REAL, &tick_cancel, NULL) == 0);
-            // 恢复之前的系统默认信号和默认信号处理。
-            sigaction(SIGALRM, &sig_oact, NULL);
-            sigprocmask(SIG_SETMASK, &oldmask, NULL);
+    // 如果还有线程没有退出
+    int            flag = 1;
+    lutf_thread_t *p    = env.main_thread;
+    do {
+        p = p->next;
+        if (p->status != lutf_EXIT) {
+            flag = 0;
         }
-        // 释放 main 信息占用空间
-        free(env.main_thread);
+    } while (p != env.main_thread);
+    // 等待其退出
+    if (flag != 0) {
+        while (1) {
+            printf("finit\n");
+        }
     }
-    printf("finit\n");
+    // 还原使用的资源
+    if (env.sched_method == TIME) {
+        printf("finit: TIME\n");
+        // 取消时钟
+        UNTICK();
+        // 恢复之前的系统默认信号和默认信号处理。
+        sigaction(SIGALRM, &sig_oact, NULL);
+        sigprocmask(SIG_SETMASK, &oldmask, NULL);
+    }
+    // 释放等待队列
+    list_free(env.main_thread->wait);
+    // 释放 main 信息占用空间
+    free(env.main_thread);
     return;
 }
 
@@ -253,53 +402,39 @@ int lutf_set_sched(lutf_sched_t method) {
         // 直接返回
         return 0;
     }
+    env.sched_method = method;
     // 之前是 TIME，现在换成 FIFO
-    else if (method == FIFO) {
-        env.sched_method = FIFO;
+    if (method == FIFO) {
         // 取消定时器
-        assert(setitimer(ITIMER_REAL, &tick_cancel, NULL) == 0);
+        UNTICK();
         // 将 SIGALRM 重置为默认
         sig_act.sa_handler = SIG_DFL;
         sigemptyset(&sig_act.sa_mask);
         sig_act.sa_flags = SA_RESETHAND;
         sigaction(SIGALRM, &sig_act, 0);
-        // 手动调用调度函数
-        sig_alarm_handler(SIGALRM);
     }
     // 之前是 FIFO，现在换成 TIME
     else if (method == TIME) {
-        env.sched_method = TIME;
         // 注册信号处理函数
-        // signal(SIGALRM, sig_alarm_handler);
         sig_act.sa_handler = sig_alarm_handler;
         sig_act.sa_flags   = 0;
         sigemptyset(&sig_act.sa_mask);
         // 注册信号捕捉函数。
         sigaction(SIGALRM, &sig_act, &sig_oact);
-        // 初始化
-        // sigemptyset(&newmask);
-        // sigaddset(&newmask, SIGALRM);
-        // 将这个信号加入到屏蔽字当中。
-        // sigprocmask(SIG_BLOCK, &newmask, &oldmask);
-        // 开启时钟
-        assert(setitimer(ITIMER_REAL, &tick_once, NULL) == 0);
-        // suspmask = oldmask;
-        // 确保suspmask中没有屏蔽SIGALRM信号。
-        // sigdelset(&suspmask, SIGALRM);
-        // 用suspmask去替换block表，从而临时解除对SIGALRM信号的阻塞
-        // sigsuspend(&suspmask);
+        TICK(&tick_mid);
     }
     return 0;
 }
 
 int lutf_set_prior(lutf_thread_t *thread, lutf_prior_t p) {
-    err_handle(ERR_TIME);
+    assert(env.sched_method == TIME);
     thread->prior = p;
     return 0;
 }
 
 int lutf_create(lutf_thread_t *thread, lutf_fun_t fun, void *arg) {
     assert(thread != NULL);
+    assert(fun != NULL);
     // id 默认为 -1
     thread->id = -1;
     // 设置为 READY
@@ -312,14 +447,16 @@ int lutf_create(lutf_thread_t *thread, lutf_fun_t fun, void *arg) {
     thread->exit_value  = NULL;
     thread->prev        = thread;
     thread->next        = thread;
-    thread->waited      = NULL;
-    thread->prior       = LOW;
+    thread->wait        = NULL;
+    thread->prior       = MID;
     thread->resume_time = 0;
     return 0;
 }
 
 int lutf_join(lutf_thread_t *thread, void **ret) {
+    assert(thread != NULL);
     // 添加到线程管理结构
+
     lutf_thread_t *prev      = env.main_thread->prev;
     lutf_thread_t *next      = env.main_thread;
     lutf_thread_t *new_entry = thread;
@@ -333,22 +470,20 @@ int lutf_join(lutf_thread_t *thread, void **ret) {
     thread->id = env.nid;
     // 更新全局信息
     env.nid += 1;
-
-    // env.main_thread->status = lutf_WAIT;
-
+    if (env.sched_method == TIME) {
+        // 将新进程添加到当前进程的等待链表
+        list_append(&env.curr_thread->wait, thread);
+    }
     // 初始化 thread 的上下文
     // 如果不是从 thread 返回，即还没有运行
-    if (setjmp(thread->context) == 0) {
+    if (sigsetjmp(thread->context, 0) == 0) {
         // 将状态更改为 RUNNING
         thread->status = lutf_RUNNING;
         // 等待执行
-        if (setjmp(env.curr_thread->context) == 0) {
+        if (sigsetjmp(env.curr_thread->context, 0) == 0) {
             // 将当前线程设为 thread
             env.curr_thread = thread;
-            longjmp(thread->context, 1);
-        }
-        else {
-            return 0;
+            siglongjmp(thread->context, 1);
         }
     }
     // 如果 setjmp 返回值不为 0，说明是从 thread 返回，
@@ -361,41 +496,24 @@ int lutf_join(lutf_thread_t *thread, void **ret) {
         }
         env.curr_thread->status = lutf_EXIT;
         if (env.sched_method == TIME) {
-            assert(setitimer(ITIMER_REAL, &tick_cancel, NULL) == 0);
+            printf("ssss\n");
             raise(SIGALRM);
         }
-        else if (env.sched_method == FIFO) {
-            sig_alarm_handler(SIGALRM);
-        }
     }
+
     return 0;
 }
 
 int lutf_exit(void *value) {
-    if (env.curr_thread != env.main_thread) {
-        env.curr_thread->exit_value = value;
-        env.curr_thread->status     = lutf_EXIT;
-    }
-    return 0;
-}
-
-int lutf_wait(lutf_thread_t *thread) {
-    assert(env.sched_method == TIME);
-    // 停止定时器
-    assert(setitimer(ITIMER_REAL, &tick_cancel, NULL) == 0);
-    env.curr_thread->status = lutf_WAIT;
-    // 记录原有 wait 线程表
-    // env.curr_thread->wait_num++;
-    // env.curr_thread->wait =
-    //     realloc(env.curr_thread->wait,
-    //             sizeof(lutf_thread_t *) * env.curr_thread->wait_num);
-    thread->waited = env.curr_thread;
-    raise(SIGALRM);
+    assert(env.curr_thread != env.main_thread);
+    env.curr_thread->exit_value = value;
+    env.curr_thread->status     = lutf_EXIT;
+    list_free(env.curr_thread->wait);
     return 0;
 }
 
 int lutf_sleep(lutf_thread_t *thread, size_t sec) {
-    err_handle(ERR_TIME);
+    assert(env.sched_method == TIME);
     thread->status      = lutf_SLEEP;
     thread->resume_time = clock() + sec * CLOCKS_PER_SEC;
     raise(SIGALRM);
@@ -431,7 +549,7 @@ int lutf_equal(lutf_thread_t *thread1, lutf_thread_t *thread2) {
     if (thread1->next != thread2->next) {
         return 0;
     }
-    if (thread1->waited != thread2->waited) {
+    if (thread1->wait != thread2->wait) {
         return 0;
     }
     return 1;
@@ -444,7 +562,7 @@ int lutf_cancel(lutf_thread_t *thread) {
 }
 
 lutf_S_t *lutf_createS(int ss) {
-    err_handle(ERR_TIME);
+    assert(env.sched_method == TIME);
     lutf_S_t *s;
     s = malloc(sizeof(lutf_S_t));
     assert(s != NULL);
@@ -455,7 +573,7 @@ lutf_S_t *lutf_createS(int ss) {
 }
 
 int lutf_P(lutf_S_t *s) {
-    err_handle(ERR_TIME);
+    assert(env.sched_method == TIME);
     if (s->s > 0) {
         s->s -= 1;
         assert(setitimer(ITIMER_REAL, &tick_cancel, NULL) == 0);
@@ -474,7 +592,7 @@ int lutf_P(lutf_S_t *s) {
 }
 
 int lutf_V(lutf_S_t *s) {
-    err_handle(ERR_TIME);
+    assert(env.sched_method == TIME);
     if (s->s >= 0) {
         s->s += 1;
     }

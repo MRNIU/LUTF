@@ -30,6 +30,10 @@ static void *test2(void *arg) {
     if (arg != NULL) {
         printf("arg: %s\n", (char *)arg);
     }
+    // Do some calculations
+    for (size_t i = 0; i < CLOCKS_PER_SEC; i++) {
+        ;
+    }
     lutf_exit((void *)"This is test2 exit value");
     return NULL;
 }
@@ -76,10 +80,10 @@ static int _create(void) {
     for (int i = 0; i < 3; i++) {
         printf("id: %d, status: %s, func: %p, arg: %p, exit_value: %p, "
                "constext: "
-               "%p, prev: %p, next: %p, waited: %p\n",
+               "%p, prev: %p, next: %p, wait: %p\n",
                task[i].id, status[task[i].status], task[i].func, task[i].arg,
                task[i].exit_value, task[i].context, task[i].prev, task[i].next,
-               task[i].waited);
+               task[i].wait);
     }
     return 0;
 }
