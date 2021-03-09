@@ -17,34 +17,34 @@ extern "C" {
 #include "lutf.h"
 
 static void *test1(void *arg) {
-    printf("test1\n");
     if (arg != NULL) {
         printf("arg: %s\n", (char *)arg);
     }
     for (size_t i = 0; i < CLOCKS_PER_SEC; i++) {
-        ;
+        printf("test1\n");
     }
     lutf_exit((void *)"This is test1 exit value");
     return NULL;
 }
 
 static void *test2(void *arg) {
-    printf("test2\n");
     if (arg != NULL) {
         printf("arg: %s\n", (char *)arg);
     }
     // Do some calculations
-    // for (size_t i = 0; i < CLOCKS_PER_SEC; i++) {
-    //     ;
-    // }
+    for (size_t i = 0; i < CLOCKS_PER_SEC; i++) {
+        printf("test2\n");
+    }
     lutf_exit((void *)"This is test2 exit value");
     return NULL;
 }
 
 static void *test3(void *arg) {
-    printf("test3\n");
     if (arg != NULL) {
         printf("arg: %s\n", (char *)arg);
+    }
+    for (size_t i = 0; i < CLOCKS_PER_SEC; i++) {
+        printf("test3\n");
     }
     lutf_exit((void *)"This is test3 exit value");
     return NULL;
@@ -83,30 +83,15 @@ static int _join_exit(void) {
     assert(lutf_create(&threads[1], test2, arg[1]) == 0);
     assert(lutf_create(&threads[2], test3, arg[2]) == 0);
     lutf_join(&threads[0], &ret[0]);
-    while (1) {
-        // printf("1");
-    }
-    printf("YES!\n");
-    // assert(strcmp("This is test1 exit value", (char *)ret[0]) == 0);
     lutf_join(&threads[1], &ret[1]);
-    // assert(strcmp("This is test2 exit value", (char *)ret[1]) == 0);
     lutf_join(&threads[2], &ret[2]);
-    // assert(strcmp("This is test3 exit value", (char *)ret[2]) == 0);
+
+    assert(strcmp("This is test1 exit value", (char *)ret[0]) == 0);
+    assert(strcmp("This is test2 exit value", (char *)ret[1]) == 0);
+    assert(strcmp("This is test3 exit value", (char *)ret[2]) == 0);
     return 0;
 }
 
-// static int _wait(void) {
-//     lutf_thread_t *threads = (lutf_thread_t *)malloc(3 *
-//     sizeof(lutf_thread_t)); void **        ret     = malloc(3 *
-//     sizeof(uint32_t *)); assert(lutf_create(&threads[0], test3, NULL) == 0);
-//     assert(lutf_create(&threads[1], test4, NULL) == 0);
-//     assert(lutf_create(&threads[2], test5, NULL) == 0);
-//     lutf_join(&threads[0], NULL);
-//     lutf_join(&threads[1], NULL);
-//     lutf_join(&threads[2], &ret[2]);
-//     printf("%s\n", (char *)ret[2]);
-//     return 0;
-// }
 // static int _self(void) {
 //     return 0;
 // }

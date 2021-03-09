@@ -50,7 +50,7 @@ extern "C" {
 // 时间片 ms
 #define SLICE (50)
 // 线程栈大小
-#define LUTF_STACK_SIZE (4096)
+#define LUTF_STACK_SIZE (16 * 1024 * 8)
 //信号量数量
 #define SEM_SIZE (1000)
 
@@ -76,6 +76,8 @@ typedef struct lutf_thread {
     lutf_task_id_t id;
     // 线程状态
     lutf_status_t status;
+    // 线程栈
+    char *stack;
     // 线程函数
     lutf_fun_t func;
     // 线程参数
@@ -155,6 +157,7 @@ int lutf_create(lutf_thread_t *thread, lutf_fun_t fun, void *arg);
 // ret: 线程返回值
 // 返回值：lutf_join 函数执行情况，成功返回 0
 int lutf_join(lutf_thread_t *thread, void **ret);
+int lutf_wait(lutf_thread_t *thread);
 // 线程退出
 // value: 退出参数
 int lutf_exit(void *value);

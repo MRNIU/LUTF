@@ -66,11 +66,6 @@ struct sigaction sig_act, sig_oact;
 // 与时钟信号配合
 sigset_t newmask, oldmask, suspmask;
 
-typedef enum {
-    ERR_FIFO,
-    ERR_TIME,
-} err_t;
-
 // 释放 list
 // list: 要释放的 list
 static void list_free(lutf_entry_t *list) {
@@ -253,9 +248,7 @@ static size_t count = 0;
 // 时钟信号处理
 static void sig_alarm_handler(int signo __attribute__((unused))) {
     count++;
-    printf("sb env.curr_thread->id: %d, status: %d\n", env.curr_thread->id,
-           env.curr_thread->status);
-    if (sigsetjmp(env.curr_thread->context, 0) == 0) {
+    if (sigsetjmp(env.curr_thread->context, 1) == 0) {
         do {
             // 切换到下个线程
             env.curr_thread = env.curr_thread->next;
@@ -319,16 +312,10 @@ static void sig_alarm_handler(int signo __attribute__((unused))) {
             // 获取剩余时间
             // getitimer(ITIMER_REAL, &left);
         }
-        printf("se env.curr_thread->id: %d, status: %d\n", env.curr_thread->id,
-               env.curr_thread->status);
-        // printf("env.curr_thread->prev->id: %d\n", env.curr_thread->prev->id);
-        // printf("env.curr_thread->next->id: %d\n", env.curr_thread->next->id);
         // 开始执行
         // 会返回到 lutf_join 处的 setjmp
         siglongjmp(env.curr_thread->context, 1);
     }
-    // ERROR: 从 setjmp 返回
-    printf("++++++\n");
     return;
 }
 
@@ -341,6 +328,7 @@ __attribute__((constructor)) static void init(void) {
     thread_main->id = 0;
     // 状态为正在运行
     thread_main->status = lutf_RUNNING;
+    thread_main->stack  = NULL;
     // 函数指针为 NULL
     thread_main->func = NULL;
     // 参数设为 NULL
@@ -369,6 +357,7 @@ __attribute__((destructor)) static void finit(void) {
     int            flag = 1;
     lutf_thread_t *p    = env.main_thread;
     do {
+        printf("finit id: %d, status: %d\n", p->id, p->status);
         p = p->next;
         if (p->status != lutf_EXIT) {
             flag = 0;
@@ -439,6 +428,7 @@ int lutf_create(lutf_thread_t *thread, lutf_fun_t fun, void *arg) {
     thread->id = -1;
     // 设置为 READY
     thread->status = lutf_READY;
+    thread->stack  = (char *)malloc(LUTF_STACK_SIZE);
     // 要执行的函数指针
     thread->func = fun;
     // 参数
@@ -476,12 +466,12 @@ int lutf_join(lutf_thread_t *thread, void **ret) {
     }
     // 初始化 thread 的上下文
     // 如果不是从 thread 返回，即还没有运行
-    if (sigsetjmp(thread->context, 0) == 0) {
+    if (sigsetjmp(thread->context, 1) == 0) {
         // 将状态更改为 RUNNING
         thread->status = lutf_RUNNING;
         // 等待执行
-        if (sigsetjmp(env.curr_thread->context, 0) == 0) {
-            // 将当前线程设为 thread
+        if (sigsetjmp(env.curr_thread->context, 1) == 0) {
+            // 将 thread 设为当前线程
             env.curr_thread = thread;
             siglongjmp(thread->context, 1);
         }
@@ -489,6 +479,11 @@ int lutf_join(lutf_thread_t *thread, void **ret) {
     // 如果 setjmp 返回值不为 0，说明是从 thread 返回，
     // 这时 env->curr_thread 指向新的线程
     else {
+#ifdef __x86_64__
+        __asm__("mov %0, %%rsp"
+                :
+                : "r"(env.curr_thread->stack + LUTF_STACK_SIZE));
+#endif
         // 执行函数
         env.curr_thread->func(env.curr_thread->arg);
         if (ret != NULL) {
@@ -496,7 +491,6 @@ int lutf_join(lutf_thread_t *thread, void **ret) {
         }
         env.curr_thread->status = lutf_EXIT;
         if (env.sched_method == TIME) {
-            printf("ssss\n");
             raise(SIGALRM);
         }
     }
@@ -508,6 +502,7 @@ int lutf_exit(void *value) {
     assert(env.curr_thread != env.main_thread);
     env.curr_thread->exit_value = value;
     env.curr_thread->status     = lutf_EXIT;
+    free(env.curr_thread->stack);
     list_free(env.curr_thread->wait);
     return 0;
 }
