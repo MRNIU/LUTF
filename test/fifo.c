@@ -69,25 +69,6 @@ static void *test5(void *arg) {
     return NULL;
 }
 
-static int _create(void) {
-    lutf_thread_t task[3];
-    assert(lutf_create(&task[0], test1, NULL) == 0);
-    assert(lutf_create(&task[1], test2, NULL) == 0);
-    assert(lutf_create(&task[2], test3, NULL) == 0);
-    char *status[] = {
-        "RUNNING", "EXIT", "WAIT", "SEM", "SLEEP",
-    };
-    for (int i = 0; i < 3; i++) {
-        printf("id: %d, status: %s, func: %p, arg: %p, exit_value: %p, "
-               "constext: "
-               "%p, prev: %p, next: %p, wait: %p\n",
-               task[i].id, status[task[i].status], task[i].func, task[i].arg,
-               task[i].exit_value, task[i].context, task[i].prev, task[i].next,
-               task[i].wait);
-    }
-    return 0;
-}
-
 static int _join_exit(void) {
     lutf_thread_t *threads = (lutf_thread_t *)malloc(3 * sizeof(lutf_thread_t));
     void **        ret     = malloc(3 * sizeof(uint32_t *));
@@ -141,10 +122,6 @@ int fifo(void) {
     printf("--------FIFO--------\n");
     printf("In this mode, threads are execute sequentially.\n");
     lutf_set_sched(FIFO);
-    printf("----create----\n");
-    printf("Create a thread and output its internal data.\n");
-    printf("Functions used are: lutf_create.\n");
-    assert(_create() == 0);
     printf("----join_exit----\n");
     printf("Create a thread, run and output its return value.\n");
     printf("Functions used are: lutf_create, lutf_join, lutf_exit.\n");

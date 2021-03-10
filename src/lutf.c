@@ -290,31 +290,80 @@ static void sig_alarm_handler(int signo __attribute__((unused))) {
             }
             // 循环直到 RUNNING 状态的线程
         } while (env.curr_thread->status != lutf_RUNNING);
-        if (env.sched_method == TIME) {
-            // 根据优先级调整运行时间
-            switch (env.curr_thread->prior) {
-                case LOW: {
-                    // 开启 timer
-                    TICK(&tick_low)
-                    break;
-                }
-                case MID: {
-                    // 开启 timer
-                    TICK(&tick_mid);
-                    break;
-                }
-                case HIGH: {
-                    // 开启 timer
-                    TICK(&tick_high);
-                    break;
-                }
+        // 根据优先级调整运行时间
+        switch (env.curr_thread->prior) {
+            case LOW: {
+                // 开启 timer
+                TICK(&tick_low)
+                break;
             }
-            // 获取剩余时间
-            // getitimer(ITIMER_REAL, &left);
+            case MID: {
+                // 开启 timer
+                TICK(&tick_mid);
+                break;
+            }
+            case HIGH: {
+                // 开启 timer
+                TICK(&tick_high);
+                break;
+            }
         }
+        // 获取剩余时间
+        // getitimer(ITIMER_REAL, &left);
         // 开始执行
         // 会返回到 lutf_join 处的 setjmp
         siglongjmp(env.curr_thread->context, 1);
+    }
+    return;
+}
+
+static void fifo_handler(void) {
+    count++;
+    if (setjmp(env.curr_thread->context) == 0) {
+        do {
+            // 切换到下个线程
+            env.curr_thread = env.curr_thread->next;
+            // 根据状态
+            switch (env.curr_thread->status) {
+                // 跳过
+                case lutf_READY: {
+                    printf("READY: %d\n", env.curr_thread->id);
+                    break;
+                }
+                case lutf_RUNNING: {
+                    printf("RUNNING: %d\n", env.curr_thread->id);
+                    break;
+                }
+                case lutf_WAIT: {
+                    break;
+                }
+                case lutf_SLEEP: {
+                    printf("SLEEP\n");
+                    if (clock() > env.curr_thread->resume_time) {
+                        env.curr_thread->status = lutf_RUNNING;
+                    }
+                    break;
+                }
+                case lutf_SEM: {
+                    printf("SEM\n");
+                    break;
+                }
+                case lutf_EXIT: {
+                    printf("EXIT: %d\n", env.curr_thread->id);
+                    // TODO:
+                    // 将退出状态的线程从链表中删除，同时标记等待其完成的线程
+                    // 这一操作不能太频繁
+                    if (count % 1000 == 0) {
+                        ;
+                    }
+                    break;
+                }
+            }
+            // 循环直到 RUNNING 状态的线程
+        } while (env.curr_thread->status != lutf_RUNNING);
+        // 开始执行
+        // 会返回到 lutf_join 处的 setjmp
+        longjmp(env.curr_thread->context, 1);
     }
     return;
 }
@@ -443,10 +492,7 @@ int lutf_create(lutf_thread_t *thread, lutf_fun_t fun, void *arg) {
     return 0;
 }
 
-int lutf_join(lutf_thread_t *thread, void **ret) {
-    assert(thread != NULL);
-    // 添加到线程管理结构
-
+static int add_list(lutf_thread_t *thread) {
     lutf_thread_t *prev      = env.main_thread->prev;
     lutf_thread_t *next      = env.main_thread;
     lutf_thread_t *new_entry = thread;
@@ -460,16 +506,23 @@ int lutf_join(lutf_thread_t *thread, void **ret) {
     thread->id = env.nid;
     // 更新全局信息
     env.nid += 1;
+    return 0;
+}
+
+int lutf_join(lutf_thread_t *thread, void **ret) {
+    assert(thread != NULL);
+    // 添加到线程管理结构
+    add_list(thread);
     // 初始化 thread 的上下文
     // 如果不是从 thread 返回，即还没有运行
-    if (sigsetjmp(thread->context, 1) == 0) {
+    if (setjmp(thread->context) == 0) {
         // 将状态更改为 RUNNING
         thread->status = lutf_RUNNING;
         // 等待执行
-        if (sigsetjmp(env.curr_thread->context, 1) == 0) {
+        if (setjmp(env.curr_thread->context) == 0) {
             // 将 thread 设为当前线程
             env.curr_thread = thread;
-            siglongjmp(thread->context, 1);
+            longjmp(thread->context, 1);
         }
     }
     // 如果 setjmp 返回值不为 0，说明是从 thread 返回，
@@ -486,7 +539,7 @@ int lutf_join(lutf_thread_t *thread, void **ret) {
             *ret = env.curr_thread->exit_value;
         }
         env.curr_thread->status = lutf_EXIT;
-        sig_alarm_handler(SIGALRM);
+        fifo_handler();
     }
     return 0;
 }
@@ -494,24 +547,9 @@ int lutf_join(lutf_thread_t *thread, void **ret) {
 int lutf_detach(lutf_thread_t *thread, void **ret) {
     assert(thread != NULL);
     // 添加到线程管理结构
-
-    lutf_thread_t *prev      = env.main_thread->prev;
-    lutf_thread_t *next      = env.main_thread;
-    lutf_thread_t *new_entry = thread;
-
-    prev->next      = new_entry;
-    next->prev      = new_entry;
-    new_entry->prev = prev;
-    new_entry->next = next;
-
-    // 设置 id
-    thread->id = env.nid;
-    // 更新全局信息
-    env.nid += 1;
-    if (env.sched_method == TIME) {
-        // 将新进程添加到当前进程的等待链表
-        list_append(&env.curr_thread->wait, thread);
-    }
+    add_list(thread);
+    // 将新进程添加到当前进程的等待链表
+    list_append(&env.curr_thread->wait, thread);
     // 初始化 thread 的上下文
     // 如果不是从 thread 返回，即还没有运行
     if (sigsetjmp(thread->context, 1) == 0) {
@@ -538,9 +576,7 @@ int lutf_detach(lutf_thread_t *thread, void **ret) {
             *ret = env.curr_thread->exit_value;
         }
         env.curr_thread->status = lutf_EXIT;
-        if (env.sched_method == TIME) {
-            raise(SIGALRM);
-        }
+        raise(SIGALRM);
     }
     return 0;
 }
