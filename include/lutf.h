@@ -48,7 +48,7 @@ extern "C" {
 #include "setjmp.h"
 
 // 时间片 ms
-#define SLICE (50)
+#define SLICE (20)
 // 线程栈大小
 #define LUTF_STACK_SIZE (16 * 1024 * 8)
 //信号量数量
@@ -157,7 +157,6 @@ int lutf_create(lutf_thread_t *thread, lutf_fun_t fun, void *arg);
 // ret: 线程返回值
 // 返回值：lutf_join 函数执行情况，成功返回 0
 int lutf_join(lutf_thread_t *thread, void **ret);
-int lutf_wait(lutf_thread_t *thread);
 // 线程退出
 // value: 退出参数
 int lutf_exit(void *value);

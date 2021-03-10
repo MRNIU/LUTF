@@ -339,8 +339,8 @@ __attribute__((constructor)) static void init(void) {
     thread_main->prev = thread_main;
     thread_main->next = thread_main;
     thread_main->wait = NULL;
-    // 优先级默认低
-    thread_main->prior       = MID;
+    // 优先级默认高
+    thread_main->prior       = HIGH;
     thread_main->resume_time = 0;
     // 更新全局信息
     env.nid         = 1;
