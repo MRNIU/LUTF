@@ -152,11 +152,16 @@ int lutf_set_prior(lutf_thread_t *thread, lutf_prior_t p);
 // argv: fun 的参数
 // 返回值：成功返回 0
 int lutf_create(lutf_thread_t *thread, lutf_fun_t fun, void *arg);
-// 等待 thread 结束
+// 当前线程阻塞，等待 thread 结束
 // thread: 要等待的线程
 // ret: 线程返回值
-// 返回值：lutf_join 函数执行情况，成功返回 0
+// 返回值：成功返回 0
 int lutf_join(lutf_thread_t *thread, void **ret);
+// 当前线程与 thread 并发执行
+// thread: 要并发的线程
+// ret: 线程返回值
+// 返回值：成功返回 0
+int lutf_detach(lutf_thread_t *thread, void **ret);
 // 线程退出
 // value: 退出参数
 int lutf_exit(void *value);

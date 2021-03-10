@@ -9,7 +9,7 @@ aux_source_directory(${LUTF_SOURCE_DIR}/test src)
 
 set(test_src
     test.c
-    # fifo.c
+    fifo.c
     time.c)
 
 link_libraries(${LIBNAME})
