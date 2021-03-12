@@ -20,7 +20,7 @@ static void *test1(void *arg) {
     if (arg != NULL) {
         printf("arg: %s\n", (char *)arg);
     }
-    for (size_t i = 0; i < CLOCKS_PER_SEC; i++) {
+    for (size_t i = 0; i < 100; i++) {
         printf("test1\n");
     }
     lutf_exit((void *)"This is test1 exit value");
@@ -32,7 +32,7 @@ static void *test2(void *arg) {
         printf("arg: %s\n", (char *)arg);
     }
     // Do some calculations
-    for (size_t i = 0; i < CLOCKS_PER_SEC; i++) {
+    for (size_t i = 0; i < 100; i++) {
         printf("test2\n");
     }
     lutf_exit((void *)"This is test2 exit value");
@@ -43,7 +43,7 @@ static void *test3(void *arg) {
     if (arg != NULL) {
         printf("arg: %s\n", (char *)arg);
     }
-    for (size_t i = 0; i < CLOCKS_PER_SEC; i++) {
+    for (size_t i = 0; i < 100; i++) {
         printf("test3\n");
     }
     lutf_exit((void *)"This is test3 exit value");
@@ -72,7 +72,7 @@ static void *test3(void *arg) {
 //     return NULL;
 // }
 
-static int _join_exit(void) {
+static int _detach_exit_wait(void) {
     // BUG：时钟中断后这里的函数会继续执行，导致 test 中的 while 停掉
     // 得改成，main 线程等待的线程全部结束后退出
     lutf_thread_t *threads = (lutf_thread_t *)malloc(3 * sizeof(lutf_thread_t));
@@ -82,10 +82,17 @@ static int _join_exit(void) {
     assert(lutf_create(&threads[0], test1, arg[0]) == 0);
     assert(lutf_create(&threads[1], test2, arg[1]) == 0);
     assert(lutf_create(&threads[2], test3, arg[2]) == 0);
+    // 开始运行
     lutf_detach(&threads[0], &ret[0]);
     lutf_detach(&threads[1], &ret[1]);
     lutf_detach(&threads[2], &ret[2]);
-    // BUG: TIME 没获取到返回值
+    // 等待退出
+    printf("wait-----------\n");
+    lutf_wait(threads, 3);
+    // while (1) {
+    //     ;
+    // }
+    printf("wait end-----------\n");
     // assert(strcmp("This is test1 exit value", (char *)ret[0]) == 0);
     // assert(strcmp("This is test2 exit value", (char *)ret[1]) == 0);
     // assert(strcmp("This is test3 exit value", (char *)ret[2]) == 0);
@@ -142,8 +149,8 @@ int time_(void) {
     lutf_set_sched(TIME);
     printf("----join_exit----\n");
     printf("Create a thread, run and output its return value.\n");
-    printf("Functions used: lutf_create, lutf_detach, lutf_exit.\n");
-    assert(_join_exit() == 0);
+    printf("Functions used: lutf_create, lutf_detach, lutf_wait, lutf_exit.\n");
+    assert(_detach_exit_wait() == 0);
     // printf("----wait----\n");
     // assert(_wait() == 0);
     // printf("----self----\n");

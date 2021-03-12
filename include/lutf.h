@@ -48,7 +48,7 @@ extern "C" {
 #include "setjmp.h"
 
 // 时间片 ms
-#define SLICE (20)
+#define SLICE (100)
 // 线程栈大小
 #define LUTF_STACK_SIZE (16 * 1024 * 8)
 //信号量数量
@@ -91,7 +91,8 @@ typedef struct lutf_thread {
     // 下一个线程
     struct lutf_thread *next;
     // 等待队列
-    struct lutf_entry *wait;
+    struct lutf_entry * wait;
+    struct lutf_thread *waited;
     // 以下参数仅在基于时间的调度使用
     // 优先级
     int prior;
@@ -162,6 +163,11 @@ int lutf_join(lutf_thread_t *thread, void **ret);
 // ret: 线程返回值
 // 返回值：成功返回 0
 int lutf_detach(lutf_thread_t *thread, void **ret);
+// 等待 detach 的线程执行完毕
+// thread: 要等待的线程数组
+// size: 数量
+// 返回值：成功返回 0
+int lutf_wait(lutf_thread_t *thread, size_t size);
 // 线程退出
 // value: 退出参数
 int lutf_exit(void *value);

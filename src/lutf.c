@@ -243,6 +243,28 @@ static int list_remove_entry(lutf_entry_t **list, lutf_entry_t *entry) {
         assert(setitimer(ITIMER_REAL, &tick_cancel, NULL) == 0);               \
     } while (0);
 
+static void _wait() {
+    // 等待等待队列中的线程完成
+    int flag = 1;
+    for (size_t i = 0; i < list_length(env.curr_thread->wait); i++) {
+        flag = 1;
+        while (1) {
+            if (list_nth_data(env.curr_thread->wait, i)->status != lutf_EXIT) {
+                flag = 0;
+                break;
+            }
+            else if (list_nth_data(env.curr_thread->wait, i)->status ==
+                     lutf_EXIT) {
+                break;
+            }
+        }
+    }
+    if (flag == 1) {
+        env.curr_thread->status = lutf_RUNNING;
+    }
+    return;
+}
+
 // 对周期处理的操作计数
 static size_t count = 0;
 // 时钟信号处理
@@ -264,6 +286,8 @@ static void sig_alarm_handler(int signo __attribute__((unused))) {
                     break;
                 }
                 case lutf_WAIT: {
+                    printf("WAIT\n");
+                    _wait();
                     break;
                 }
                 case lutf_SLEEP: {
@@ -401,23 +425,8 @@ __attribute__((constructor)) static void init(void) {
 }
 
 // 析构函数，在 main 结束后执行
+// 保证所有线程都被回收
 __attribute__((destructor)) static void finit(void) {
-    // 如果还有线程没有退出
-    int            flag = 1;
-    lutf_thread_t *p    = env.main_thread;
-    do {
-        printf("finit id: %d, status: %d\n", p->id, p->status);
-        p = p->next;
-        if (p->status != lutf_EXIT) {
-            flag = 0;
-        }
-    } while (p != env.main_thread);
-    // 等待其退出
-    if (flag != 0) {
-        while (1) {
-            printf("finit\n");
-        }
-    }
     // 还原使用的资源
     if (env.sched_method == TIME) {
         printf("finit: TIME\n");
@@ -427,6 +436,18 @@ __attribute__((destructor)) static void finit(void) {
         sigaction(SIGALRM, &sig_oact, NULL);
         sigprocmask(SIG_SETMASK, &oldmask, NULL);
     }
+    // 如果还有线程没有退出
+    lutf_thread_t *p = env.main_thread->next;
+    while (p != env.main_thread) {
+        if (p->status != lutf_EXIT) {
+            p->exit_value = NULL;
+            p->status     = lutf_EXIT;
+            free(p->stack);
+            list_free(p->wait);
+        }
+        p = p->next;
+    }
+    env.main_thread->status = lutf_EXIT;
     // 释放等待队列
     list_free(env.main_thread->wait);
     // 释放 main 信息占用空间
@@ -478,6 +499,7 @@ int lutf_create(lutf_thread_t *thread, lutf_fun_t fun, void *arg) {
     // 设置为 READY
     thread->status = lutf_READY;
     thread->stack  = (char *)malloc(LUTF_STACK_SIZE);
+    assert(thread->stack != NULL);
     // 要执行的函数指针
     thread->func = fun;
     // 参数
@@ -487,6 +509,7 @@ int lutf_create(lutf_thread_t *thread, lutf_fun_t fun, void *arg) {
     thread->prev        = thread;
     thread->next        = thread;
     thread->wait        = NULL;
+    thread->waited      = NULL;
     thread->prior       = MID;
     thread->resume_time = 0;
     return 0;
@@ -548,8 +571,6 @@ int lutf_detach(lutf_thread_t *thread, void **ret) {
     assert(thread != NULL);
     // 添加到线程管理结构
     add_list(thread);
-    // 将新进程添加到当前进程的等待链表
-    list_append(&env.curr_thread->wait, thread);
     // 初始化 thread 的上下文
     // 如果不是从 thread 返回，即还没有运行
     if (sigsetjmp(thread->context, 1) == 0) {
@@ -578,6 +599,17 @@ int lutf_detach(lutf_thread_t *thread, void **ret) {
         env.curr_thread->status = lutf_EXIT;
         raise(SIGALRM);
     }
+    return 0;
+}
+
+int lutf_wait(lutf_thread_t *thread, size_t size) {
+    UNTICK();
+    env.curr_thread->status = lutf_WAIT;
+    for (size_t i = 0; i < size; i++) {
+        // 将新进程添加到当前进程的等待链表
+        list_append(&env.curr_thread->wait, &thread[i]);
+    }
+    raise(SIGALRM);
     return 0;
 }
 
