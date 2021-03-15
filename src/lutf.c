@@ -250,16 +250,19 @@ static void _wait() {
         flag = 1;
         while (1) {
             if (list_nth_data(env.curr_thread->wait, i)->status != lutf_EXIT) {
+                printf("!=\n");
                 flag = 0;
                 break;
             }
             else if (list_nth_data(env.curr_thread->wait, i)->status ==
                      lutf_EXIT) {
+                printf("==\n");
                 break;
             }
         }
     }
     if (flag == 1) {
+        printf("flag==1\n");
         env.curr_thread->status = lutf_RUNNING;
     }
     return;

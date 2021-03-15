@@ -48,7 +48,7 @@ extern "C" {
 #include "setjmp.h"
 
 // 时间片 ms
-#define SLICE (100)
+#define SLICE (10)
 // 线程栈大小
 #define LUTF_STACK_SIZE (16 * 1024 * 8)
 //信号量数量
