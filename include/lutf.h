@@ -91,8 +91,7 @@ typedef struct lutf_thread {
     // 下一个线程
     struct lutf_thread *next;
     // 等待队列
-    struct lutf_entry * wait;
-    struct lutf_thread *waited;
+    struct lutf_entry *wait;
     // 以下参数仅在基于时间的调度使用
     // 优先级
     int prior;

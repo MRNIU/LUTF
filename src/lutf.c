@@ -68,7 +68,7 @@ sigset_t newmask, oldmask, suspmask;
 
 // 释放 list
 // list: 要释放的 list
-static void list_free(lutf_entry_t *list) {
+static int list_free(lutf_entry_t *list) {
     lutf_entry_t *entry;
     entry = list;
     while (entry != NULL) {
@@ -77,7 +77,7 @@ static void list_free(lutf_entry_t *list) {
         free(entry);
         entry = next;
     }
-    return;
+    return 0;
 }
 
 // 在 list 头部插入
@@ -236,36 +236,32 @@ static int list_remove_entry(lutf_entry_t **list, lutf_entry_t *entry) {
 #define TICK(x)                                                                \
     do {                                                                       \
         assert(setitimer(ITIMER_REAL, x, NULL) == 0);                          \
-    } while (0);
+    } while (0)
 
 #define UNTICK()                                                               \
     do {                                                                       \
         assert(setitimer(ITIMER_REAL, &tick_cancel, NULL) == 0);               \
-    } while (0);
+    } while (0)
 
-static void _wait() {
+static int wait_(void) {
     // 等待等待队列中的线程完成
     int flag = 1;
     for (size_t i = 0; i < list_length(env.curr_thread->wait); i++) {
-        flag = 1;
-        while (1) {
-            if (list_nth_data(env.curr_thread->wait, i)->status != lutf_EXIT) {
-                printf("!=\n");
-                flag = 0;
-                break;
-            }
-            else if (list_nth_data(env.curr_thread->wait, i)->status ==
-                     lutf_EXIT) {
-                printf("==\n");
-                break;
-            }
+        if (list_nth_data(env.curr_thread->wait, i)->status == lutf_EXIT) {
+            printf("==\n");
+            continue;
+        }
+        else {
+            printf("!=\n");
+            flag = 0;
+            break;
         }
     }
     if (flag == 1) {
         printf("flag==1\n");
         env.curr_thread->status = lutf_RUNNING;
     }
-    return;
+    return 0;
 }
 
 // 对周期处理的操作计数
@@ -289,8 +285,8 @@ static void sig_alarm_handler(int signo __attribute__((unused))) {
                     break;
                 }
                 case lutf_WAIT: {
-                    printf("WAIT\n");
-                    _wait();
+                    printf("RUNNING: %d\n", env.curr_thread->id);
+                    wait_();
                     break;
                 }
                 case lutf_SLEEP: {
@@ -321,7 +317,7 @@ static void sig_alarm_handler(int signo __attribute__((unused))) {
         switch (env.curr_thread->prior) {
             case LOW: {
                 // 开启 timer
-                TICK(&tick_low)
+                TICK(&tick_low);
                 break;
             }
             case MID: {
@@ -341,10 +337,9 @@ static void sig_alarm_handler(int signo __attribute__((unused))) {
         // 会返回到 lutf_join 处的 setjmp
         siglongjmp(env.curr_thread->context, 1);
     }
-    return;
 }
 
-static void fifo_handler(void) {
+static int fifo_handler(void) {
     count++;
     if (setjmp(env.curr_thread->context) == 0) {
         do {
@@ -392,11 +387,11 @@ static void fifo_handler(void) {
         // 会返回到 lutf_join 处的 setjmp
         longjmp(env.curr_thread->context, 1);
     }
-    return;
+    return 0;
 }
 
 // 构造函数，在 main 之前执行
-__attribute__((constructor)) static void init(void) {
+__attribute__((constructor)) static int init(void) {
     // 初始化 main 线程信息
     lutf_thread_t *thread_main = (lutf_thread_t *)malloc(sizeof(lutf_thread_t));
     assert(thread_main != NULL);
@@ -424,12 +419,12 @@ __attribute__((constructor)) static void init(void) {
     env.curr_thread = thread_main;
     // 默认调度方式
     env.sched_method = FIFO;
-    return;
+    return 0;
 }
 
 // 析构函数，在 main 结束后执行
 // 保证所有线程都被回收
-__attribute__((destructor)) static void finit(void) {
+__attribute__((destructor)) static int finit(void) {
     // 还原使用的资源
     if (env.sched_method == TIME) {
         printf("finit: TIME\n");
@@ -443,6 +438,7 @@ __attribute__((destructor)) static void finit(void) {
     lutf_thread_t *p = env.main_thread->next;
     while (p != env.main_thread) {
         if (p->status != lutf_EXIT) {
+            printf("NOT EXIT: %d\n", p->id);
             p->exit_value = NULL;
             p->status     = lutf_EXIT;
             free(p->stack);
@@ -455,7 +451,7 @@ __attribute__((destructor)) static void finit(void) {
     list_free(env.main_thread->wait);
     // 释放 main 信息占用空间
     free(env.main_thread);
-    return;
+    return 0;
 }
 
 int lutf_set_sched(lutf_sched_t method) {
@@ -512,7 +508,6 @@ int lutf_create(lutf_thread_t *thread, lutf_fun_t fun, void *arg) {
     thread->prev        = thread;
     thread->next        = thread;
     thread->wait        = NULL;
-    thread->waited      = NULL;
     thread->prior       = MID;
     thread->resume_time = 0;
     return 0;
@@ -527,7 +522,6 @@ static int add_list(lutf_thread_t *thread) {
     next->prev      = new_entry;
     new_entry->prev = prev;
     new_entry->next = next;
-
     // 设置 id
     thread->id = env.nid;
     // 更新全局信息
