@@ -235,12 +235,12 @@ static int list_remove_entry(lutf_entry_t **list, lutf_entry_t *entry) {
 // 锁，暂时关闭时钟
 #define TICK(x)                                                                \
     do {                                                                       \
-        assert(setitimer(ITIMER_REAL, x, NULL) == 0);                          \
+        assert(setitimer(ITIMER_VIRTUAL, x, NULL) == 0);                       \
     } while (0)
 
 #define UNTICK()                                                               \
     do {                                                                       \
-        assert(setitimer(ITIMER_REAL, &tick_cancel, NULL) == 0);               \
+        assert(setitimer(ITIMER_VIRTUAL, &tick_cancel, NULL) == 0);            \
     } while (0)
 
 static int wait_(void) {
@@ -332,7 +332,7 @@ static void sig_alarm_handler(int signo __attribute__((unused))) {
             }
         }
         // 获取剩余时间
-        // getitimer(ITIMER_REAL, &left);
+        // getitimer(ITIMER_VIRTUAL, &left);
         // 开始执行
         // 会返回到 lutf_join 处的 setjmp
         siglongjmp(env.curr_thread->context, 1);
@@ -431,7 +431,7 @@ __attribute__((destructor)) static int finit(void) {
         // 取消时钟
         UNTICK();
         // 恢复之前的系统默认信号和默认信号处理。
-        sigaction(SIGALRM, &sig_oact, NULL);
+        sigaction(SIGVTALRM, &sig_oact, NULL);
         sigprocmask(SIG_SETMASK, &oldmask, NULL);
     }
     // 如果还有线程没有退出
@@ -465,11 +465,11 @@ int lutf_set_sched(lutf_sched_t method) {
     if (method == FIFO) {
         // 取消定时器
         UNTICK();
-        // 将 SIGALRM 重置为默认
+        // 将 SIGVTALRM 重置为默认
         sig_act.sa_handler = SIG_DFL;
         sigemptyset(&sig_act.sa_mask);
         sig_act.sa_flags = SA_RESETHAND;
-        sigaction(SIGALRM, &sig_act, 0);
+        sigaction(SIGVTALRM, &sig_act, 0);
     }
     // 之前是 FIFO，现在换成 TIME
     else if (method == TIME) {
@@ -478,7 +478,7 @@ int lutf_set_sched(lutf_sched_t method) {
         sig_act.sa_flags   = 0;
         sigemptyset(&sig_act.sa_mask);
         // 注册信号捕捉函数。
-        sigaction(SIGALRM, &sig_act, &sig_oact);
+        sigaction(SIGVTALRM, &sig_act, &sig_oact);
         TICK(&tick_mid);
     }
     return 0;
@@ -594,7 +594,7 @@ int lutf_detach(lutf_thread_t *thread, void **ret) {
             *ret = env.curr_thread->exit_value;
         }
         env.curr_thread->status = lutf_EXIT;
-        raise(SIGALRM);
+        raise(SIGVTALRM);
     }
     return 0;
 }
@@ -606,7 +606,7 @@ int lutf_wait(lutf_thread_t *thread, size_t size) {
         // 将新进程添加到当前进程的等待链表
         list_append(&env.curr_thread->wait, &thread[i]);
     }
-    raise(SIGALRM);
+    raise(SIGVTALRM);
     return 0;
 }
 
@@ -623,7 +623,7 @@ int lutf_sleep(lutf_thread_t *thread, size_t sec) {
     assert(env.sched_method == TIME);
     thread->status      = lutf_SLEEP;
     thread->resume_time = clock() + sec * CLOCKS_PER_SEC;
-    raise(SIGALRM);
+    raise(SIGVTALRM);
     return 0;
 }
 
@@ -664,7 +664,7 @@ int lutf_equal(lutf_thread_t *thread1, lutf_thread_t *thread2) {
 
 int lutf_cancel(lutf_thread_t *thread) {
     lutf_exit(NULL);
-    raise(SIGALRM);
+    raise(SIGVTALRM);
     return 0;
 }
 
@@ -683,7 +683,7 @@ int lutf_P(lutf_S_t *s) {
     assert(env.sched_method == TIME);
     if (s->s > 0) {
         s->s -= 1;
-        assert(setitimer(ITIMER_REAL, &tick_cancel, NULL) == 0);
+        assert(setitimer(ITIMER_VIRTUAL, &tick_cancel, NULL) == 0);
     }
     else {
         s->s -= 1;
@@ -693,7 +693,7 @@ int lutf_P(lutf_S_t *s) {
         }
         env.curr_thread->status  = lutf_SEM;
         s->queue[labs(s->s) - 1] = env.curr_thread;
-        raise(SIGALRM);
+        raise(SIGVTALRM);
     }
     return 0;
 }
@@ -707,7 +707,7 @@ int lutf_V(lutf_S_t *s) {
         s->s += 1;
         s->queue[labs(s->s)]->status = lutf_RUNNING;
     }
-    assert(setitimer(ITIMER_REAL, &tick_cancel, NULL) == 0);
+    assert(setitimer(ITIMER_VIRTUAL, &tick_cancel, NULL) == 0);
     return 0;
 }
 

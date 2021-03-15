@@ -48,7 +48,8 @@ extern "C" {
 #include "setjmp.h"
 
 // 时间片 ms
-#define SLICE (10)
+// 存在最小值，与 LUTF 内部处理时间成正比
+#define SLICE (60)
 // 线程栈大小
 #define LUTF_STACK_SIZE (16 * 1024 * 8)
 //信号量数量
