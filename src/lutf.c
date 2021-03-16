@@ -16,8 +16,6 @@ extern "C" {
 #include "time.h"
 #include "lutf.h"
 
-// TODO: 使用 sigaction 替换 signal
-
 // 全局状态
 static lutf_env_t env = {
     .nid         = 0,
@@ -27,14 +25,6 @@ static lutf_env_t env = {
 
 // 取消所有定时
 struct itimerval tick_cancel = {
-    .it_interval.tv_sec  = 0,
-    .it_interval.tv_usec = 0,
-    .it_value.tv_sec     = 0,
-    .it_value.tv_usec    = 0,
-};
-
-// 用于获取剩余时间
-struct itimerval old_tick = {
     .it_interval.tv_sec  = 0,
     .it_interval.tv_usec = 0,
     .it_value.tv_sec     = 0,
@@ -62,9 +52,7 @@ struct itimerval tick_high = {
 };
 
 // 信号处理
-struct sigaction sig_act, sig_oact;
-// 与时钟信号配合
-sigset_t newmask, oldmask, suspmask;
+struct sigaction sig_act;
 
 // 释放 list
 // list: 要释放的 list
@@ -248,17 +236,14 @@ static int wait_(void) {
     int flag = 1;
     for (size_t i = 0; i < list_length(env.curr_thread->wait); i++) {
         if (list_nth_data(env.curr_thread->wait, i)->status == lutf_EXIT) {
-            printf("==\n");
             continue;
         }
         else {
-            printf("!=\n");
             flag = 0;
             break;
         }
     }
     if (flag == 1) {
-        printf("flag==1\n");
         env.curr_thread->status = lutf_RUNNING;
     }
     return 0;
@@ -269,7 +254,7 @@ static size_t count = 0;
 // 时钟信号处理
 static void sig_alarm_handler(int signo __attribute__((unused))) {
     count++;
-    if (sigsetjmp(env.curr_thread->context, 1) == 0) {
+    if (setjmp(env.curr_thread->context) == 0) {
         do {
             // 切换到下个线程
             env.curr_thread = env.curr_thread->next;
@@ -335,7 +320,7 @@ static void sig_alarm_handler(int signo __attribute__((unused))) {
         // getitimer(ITIMER_VIRTUAL, &left);
         // 开始执行
         // 会返回到 lutf_join 处的 setjmp
-        siglongjmp(env.curr_thread->context, 1);
+        longjmp(env.curr_thread->context, 1);
     }
 }
 
@@ -431,14 +416,17 @@ __attribute__((destructor)) static int finit(void) {
         // 取消时钟
         UNTICK();
         // 恢复之前的系统默认信号和默认信号处理。
-        sigaction(SIGVTALRM, &sig_oact, NULL);
-        sigprocmask(SIG_SETMASK, &oldmask, NULL);
+        // 将 SIGVTALRM 重置为默认
+        sig_act.sa_handler = SIG_DFL;
+        sigemptyset(&sig_act.sa_mask);
+        sig_act.sa_flags = SA_RESETHAND;
+        sigaction(SIGVTALRM, &sig_act, 0);
     }
     // 如果还有线程没有退出
     lutf_thread_t *p = env.main_thread->next;
     while (p != env.main_thread) {
         if (p->status != lutf_EXIT) {
-            printf("NOT EXIT: %d\n", p->id);
+            // 直接回收
             p->exit_value = NULL;
             p->status     = lutf_EXIT;
             free(p->stack);
@@ -478,7 +466,7 @@ int lutf_set_sched(lutf_sched_t method) {
         sig_act.sa_flags   = 0;
         sigemptyset(&sig_act.sa_mask);
         // 注册信号捕捉函数。
-        sigaction(SIGVTALRM, &sig_act, &sig_oact);
+        sigaction(SIGVTALRM, &sig_act, NULL);
         TICK(&tick_mid);
     }
     return 0;
@@ -529,6 +517,10 @@ static int add_list(lutf_thread_t *thread) {
     return 0;
 }
 
+//保证局部变量在longjmp过程中一直保存它的值的方法：把它声明为volatile变量。（适合那些在setjmp执行和longjmp返回之间会改变的变量）。
+// 存放在内存中的变量，将具有调用longjmp时的值，而在CPU和浮点寄存器中的变量则恢复为调用setjmp函数时的值。
+// 优化编译时，register和auto变量都存放在寄存器中，而volatile变量仍存放在内存。
+
 int lutf_join(lutf_thread_t *thread, void **ret) {
     assert(thread != NULL);
     // 添加到线程管理结构
@@ -548,6 +540,7 @@ int lutf_join(lutf_thread_t *thread, void **ret) {
     // 如果 setjmp 返回值不为 0，说明是从 thread 返回，
     // 这时 env->curr_thread 指向新的线程
     else {
+// TODO: GCC builtin stack switch
 #ifdef __x86_64__
         __asm__("mov %0, %%rsp"
                 :
@@ -570,28 +563,37 @@ int lutf_detach(lutf_thread_t *thread, void **ret) {
     add_list(thread);
     // 初始化 thread 的上下文
     // 如果不是从 thread 返回，即还没有运行
-    if (sigsetjmp(thread->context, 1) == 0) {
+    if (setjmp(thread->context) == 0) {
         // 将状态更改为 RUNNING
         thread->status = lutf_RUNNING;
         // 等待执行
-        if (sigsetjmp(env.curr_thread->context, 1) == 0) {
+        if (setjmp(env.curr_thread->context) == 0) {
             // 将 thread 设为当前线程
             env.curr_thread = thread;
-            siglongjmp(thread->context, 1);
+            longjmp(thread->context, 1);
         }
     }
     // 如果 setjmp 返回值不为 0，说明是从 thread 返回，
     // 这时 env->curr_thread 指向新的线程
     else {
+// TODO: GCC builtin stack switch
 #ifdef __x86_64__
         __asm__("mov %0, %%rsp"
                 :
                 : "r"(env.curr_thread->stack + LUTF_STACK_SIZE));
 #endif
         // 执行函数
+        printf("&ret-1: %p\n", &ret);
+        printf("ret-1: %p\n", ret);
         env.curr_thread->func(env.curr_thread->arg);
+        // BUG: ret 的地址变成 0x03
+        printf("&ret: %p\n", &ret);
+        printf("ret: %p\n", ret);
         if (ret != NULL) {
-            *ret = env.curr_thread->exit_value;
+            printf("&ret: %p\n", &ret);
+            printf("ret: %p\n", ret);
+            // printf("*ret: %d\n", *ret);
+            // *ret = env.curr_thread->exit_value;
         }
         env.curr_thread->status = lutf_EXIT;
         raise(SIGVTALRM);

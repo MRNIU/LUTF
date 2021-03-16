@@ -71,18 +71,20 @@ static void *test5(void *arg) {
 
 static int _join_exit(void) {
     lutf_thread_t *threads = (lutf_thread_t *)malloc(3 * sizeof(lutf_thread_t));
-    void **        ret     = malloc(3 * sizeof(uint32_t *));
     char *         arg[3]  = {"This is test1 arg", "This is test2 arg",
                     "This is test3 arg"};
+    void *         ret1    = malloc(strlen(arg[0]));
+    void *         ret2    = malloc(strlen(arg[1]));
+    void *         ret3    = malloc(strlen(arg[2]));
     assert(lutf_create(&threads[0], test1, arg[0]) == 0);
     assert(lutf_create(&threads[1], test2, arg[1]) == 0);
     assert(lutf_create(&threads[2], test3, arg[2]) == 0);
-    lutf_join(&threads[0], &ret[0]);
-    assert(strcmp("This is test1 exit value", (char *)ret[0]) == 0);
-    lutf_join(&threads[1], &ret[1]);
-    assert(strcmp("This is test2 exit value", (char *)ret[1]) == 0);
-    lutf_join(&threads[2], &ret[2]);
-    assert(strcmp("This is test3 exit value", (char *)ret[2]) == 0);
+    lutf_join(&threads[0], &ret1);
+    assert(strcmp("This is test1 exit value", (char *)ret1) == 0);
+    lutf_join(&threads[1], &ret2);
+    assert(strcmp("This is test2 exit value", (char *)ret2) == 0);
+    lutf_join(&threads[2], &ret3);
+    assert(strcmp("This is test3 exit value", (char *)ret3) == 0);
     return 0;
 }
 
