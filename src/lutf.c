@@ -593,7 +593,7 @@ int lutf_detach(lutf_thread_t *thread, void **ret) {
             printf("&ret: %p\n", &ret);
             printf("ret: %p\n", ret);
             // printf("*ret: %d\n", *ret);
-            // *ret = env.curr_thread->exit_value;
+            *ret = env.curr_thread->exit_value;
         }
         env.curr_thread->status = lutf_EXIT;
         raise(SIGVTALRM);
@@ -613,11 +613,17 @@ int lutf_wait(lutf_thread_t *thread, size_t size) {
 }
 
 int lutf_exit(void *value) {
+    if (env.sched_method == TIME) {
+        UNTICK();
+    }
     assert(env.curr_thread != env.main_thread);
     env.curr_thread->exit_value = value;
     env.curr_thread->status     = lutf_EXIT;
     free(env.curr_thread->stack);
     list_free(env.curr_thread->wait);
+    if (env.sched_method == TIME) {
+        raise(SIGVTALRM);
+    }
     return 0;
 }
 
