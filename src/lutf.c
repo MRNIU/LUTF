@@ -342,6 +342,7 @@ static int fifo_handler(void) {
                     break;
                 }
                 case lutf_WAIT: {
+                    printf("WAIT: %d\n", env.curr_thread->id);
                     break;
                 }
                 case lutf_SLEEP: {
@@ -425,6 +426,7 @@ __attribute__((destructor)) static int finit(void) {
     // 如果还有线程没有退出
     lutf_thread_t *p = env.main_thread->next;
     while (p != env.main_thread) {
+        printf("id: %d, status: %d\n", p->id, p->status);
         if (p->status != lutf_EXIT) {
             // 直接回收
             p->exit_value = NULL;
@@ -592,7 +594,7 @@ int lutf_detach(lutf_thread_t *thread, void **ret) {
         if (ret != NULL) {
             printf("&ret: %p\n", &ret);
             printf("ret: %p\n", ret);
-            // printf("*ret: %d\n", *ret);
+            printf("*ret: %d\n", *ret);
             *ret = env.curr_thread->exit_value;
         }
         env.curr_thread->status = lutf_EXIT;
