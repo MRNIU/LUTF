@@ -50,27 +50,27 @@ static void *test3(void *arg) {
     return NULL;
 }
 
-// static void *test4(void *arg) {
-//     printf("test4\n");
-//     if (arg != NULL) {
-//         printf("arg: %d\n", *(uint32_t *)arg);
-//     }
-//     lutf_exit(arg);
-//     return NULL;
-// }
+static void *test4(void *arg) {
+    printf("test4\n");
+    if (arg != NULL) {
+        printf("arg: %d\n", *(uint32_t *)arg);
+    }
+    lutf_exit(arg);
+    return NULL;
+}
 
-// static void *test5(void *arg) {
-//     printf("test5\n");
-//     if (arg != NULL) {
-//         printf("arg: %d\n", *(uint32_t *)arg);
-//     }
-//     // Do some calculations
-//     for (size_t i = 0; i < CLOCKS_PER_SEC; i++) {
-//         ;
-//     }
-//     lutf_exit(arg);
-//     return NULL;
-// }
+static void *test5(void *arg) {
+    printf("test5\n");
+    if (arg != NULL) {
+        printf("arg: %d\n", *(uint32_t *)arg);
+    }
+    // Do some calculations
+    for (size_t i = 0; i < CLOCKS_PER_SEC; i++) {
+        ;
+    }
+    lutf_exit(arg);
+    return NULL;
+}
 
 static int _detach_exit_wait(void) {
     lutf_thread_t *threads = (lutf_thread_t *)malloc(3 * sizeof(lutf_thread_t));
@@ -103,32 +103,29 @@ static int _detach_exit_wait(void) {
 // }
 
 // 百万级测试
-// static int _million(void) {
-// #define COUNT 4
-//     lutf_thread_t *threads =
-//         (lutf_thread_t *)malloc(COUNT * sizeof(lutf_thread_t));
-//     void **   ret = malloc(COUNT * sizeof(uint32_t *));
-//     uint32_t *arg = (uint32_t *)malloc(COUNT * sizeof(uint32_t));
-//     for (size_t i = 0; i < COUNT; i++) {
-//         arg[i] = i;
-//         ret[i] = NULL;
-//     }
-//     for (size_t i = 0; i < COUNT / 2; i++) {
-//         assert(lutf_create(&threads[i], test4, (void *)&arg[i]) == 0);
-//     }
-//     for (size_t i = 0; i < COUNT / 2; i++) {
-//         lutf_detach(&threads[i], &ret[i]);
-//         assert(*(uint32_t *)ret[i] == i);
-//     }
-//     for (size_t i = COUNT / 2; i < COUNT; i++) {
-//         assert(lutf_create(&threads[i], test5, (void *)&arg[i]) == 0);
-//     }
-//     for (size_t i = COUNT / 2; i < COUNT; i++) {
-//         lutf_detach(&threads[i], &ret[i]);
-//         assert(*(uint32_t *)ret[i] == i);
-//     }
-//     return 0;
-// }
+static int _million(void) {
+#define COUNT 2000
+    lutf_thread_t *threads =
+        (lutf_thread_t *)malloc(COUNT * sizeof(lutf_thread_t));
+    uint32_t *arg = (uint32_t *)malloc(COUNT * sizeof(uint32_t));
+    for (size_t i = 0; i < COUNT; i++) {
+        arg[i] = i;
+    }
+    for (size_t i = 0; i < COUNT / 2; i++) {
+        assert(lutf_create(&threads[i], test4, (void *)&arg[i]) == 0);
+    }
+    for (size_t i = 0; i < COUNT / 2; i++) {
+        lutf_detach(&threads[i]);
+    }
+    for (size_t i = COUNT / 2; i < COUNT; i++) {
+        assert(lutf_create(&threads[i], test5, (void *)&arg[i]) == 0);
+    }
+    for (size_t i = COUNT / 2; i < COUNT; i++) {
+        lutf_detach(&threads[i]);
+        lutf_wait(&threads[i], 1);
+    }
+    return 0;
+}
 
 // 测试顺序
 // create，join，exit，wait，self，equal，cancel，sync
@@ -149,10 +146,10 @@ int time_(void) {
     // assert(_cancel() == 0);
     // printf("----sync----\n");
     // assert(_sync() == 0);
-    // printf("----million----\n");
-    // printf("Create a million threads, run and output its return value.\n");
-    // printf("Functions used are: lutf_create, lutf_detach, lutf_exit.\n");
-    // assert(_million() == 0);
+    printf("----million----\n");
+    printf("Create a million threads, run and output its return value.\n");
+    printf("Functions used are: lutf_create, lutf_detach, lutf_exit.\n");
+    assert(_million() == 0);
     printf("--------TIME END--------\n");
     return 0;
 }

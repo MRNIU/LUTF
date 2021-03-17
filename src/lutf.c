@@ -431,6 +431,7 @@ __attribute__((destructor)) static int finit(void) {
             // 直接回收
             p->exit_value = NULL;
             p->status     = lutf_EXIT;
+            // BUG: 在 aarch64
             free(p->stack);
             list_free(p->wait);
         }
@@ -542,10 +543,14 @@ int lutf_join(lutf_thread_t *thread, void **ret) {
     // 如果 setjmp 返回值不为 0，说明是从 thread 返回，
     // 这时 env->curr_thread 指向新的线程
     else {
-#ifdef __x86_64__
+#if defined(__x86_64__)
         __asm__("mov %0, %%rsp"
                 :
                 : "r"(env.curr_thread->stack + LUTF_STACK_SIZE));
+#elif defined(__aarch64__)
+        __asm__("ldr sp, %[stack]"
+                :
+                : [stack] "r"(env.curr_thread->stack + LUTF_STACK_SIZE));
 #endif
         // 执行函数
         env.curr_thread->func(env.curr_thread->arg);
@@ -577,10 +582,14 @@ int lutf_detach(lutf_thread_t *thread) {
     // 如果 setjmp 返回值不为 0，说明是从 thread 返回，
     // 这时 env->curr_thread 指向新的线程
     else {
-#ifdef __x86_64__
+#if defined(__x86_64__)
         __asm__("mov %0, %%rsp"
                 :
                 : "r"(env.curr_thread->stack + LUTF_STACK_SIZE));
+#elif defined(__aarch64__)
+        __asm__("ldr sp, %[stack]"
+                :
+                : [stack] "r"(env.curr_thread->stack + LUTF_STACK_SIZE));
 #endif
         // 执行函数
         env.curr_thread->func(env.curr_thread->arg);
