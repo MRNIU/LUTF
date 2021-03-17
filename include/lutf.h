@@ -36,7 +36,7 @@ extern "C" {
 // 优化方向
 // TODO:
 // 进程 id 的分配，避免冲突
-
+// TODO: 使用 state-threads 部分代码进行优化
 #include "stdint.h"
 #include "sys/types.h"
 #include "setjmp.h"

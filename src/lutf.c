@@ -432,7 +432,9 @@ __attribute__((destructor)) static int finit(void) {
             p->exit_value = NULL;
             p->status     = lutf_EXIT;
             // BUG: 在 aarch64 下会 SF
-            free(p->stack);
+            if (p->stack != NULL) {
+                free(p->stack);
+            }
             list_free(p->wait);
         }
         p = p->next;
@@ -548,9 +550,6 @@ int lutf_join(lutf_thread_t *thread, void **ret) {
                 :
                 : "r"(env.curr_thread->stack + LUTF_STACK_SIZE));
 #elif defined(__aarch64__)
-        __asm__("ldr sp, %[stack]"
-                :
-                : [stack] "r"(env.curr_thread->stack + LUTF_STACK_SIZE));
 #endif
         // 执行函数
         env.curr_thread->func(env.curr_thread->arg);
@@ -587,7 +586,7 @@ int lutf_detach(lutf_thread_t *thread) {
                 :
                 : "r"(env.curr_thread->stack + LUTF_STACK_SIZE));
 #elif defined(__aarch64__)
-        __asm__("ldr sp, %[stack]"
+        __asm__("mov sp, %[stack]"
                 :
                 : [stack] "r"(env.curr_thread->stack + LUTF_STACK_SIZE));
 #endif
@@ -599,8 +598,6 @@ int lutf_detach(lutf_thread_t *thread) {
     return 0;
 }
 
-// BUG: (gcc-10, clang-12) 与 gcc-7 的行为不一致，会将 3 号进程设为 WAIT，而不是
-// 0
 int lutf_wait(lutf_thread_t *thread, size_t size) {
     UNTICK();
     printf("wait: %d\n", env.curr_thread->id);
@@ -621,6 +618,7 @@ int lutf_exit(void *value) {
     env.curr_thread->exit_value = value;
     env.curr_thread->status     = lutf_EXIT;
     free(env.curr_thread->stack);
+    env.curr_thread->stack = NULL;
     list_free(env.curr_thread->wait);
     if (env.sched_method == TIME) {
         raise(SIGVTALRM);
