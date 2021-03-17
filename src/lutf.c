@@ -550,6 +550,9 @@ int lutf_join(lutf_thread_t *thread, void **ret) {
                 :
                 : "r"(env.curr_thread->stack + LUTF_STACK_SIZE));
 #elif defined(__aarch64__)
+        __asm__("mov sp, %[stack]"
+                :
+                : [stack] "r"((env.curr_thread->stack + LUTF_STACK_SIZE)));
 #endif
         // 执行函数
         env.curr_thread->func(env.curr_thread->arg);
@@ -588,7 +591,7 @@ int lutf_detach(lutf_thread_t *thread) {
 #elif defined(__aarch64__)
         __asm__("mov sp, %[stack]"
                 :
-                : [stack] "r"(env.curr_thread->stack + LUTF_STACK_SIZE));
+                : [stack] "r"((env.curr_thread->stack + LUTF_STACK_SIZE)));
 #endif
         // 执行函数
         env.curr_thread->func(env.curr_thread->arg);

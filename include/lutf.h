@@ -92,7 +92,7 @@ typedef struct lutf_thread {
     // 优先级
     int prior;
     // 唤醒时间，在 TIME 中 sleep 使用
-    size_t resume_time;
+    clock_t resume_time;
 } lutf_thread_t;
 
 typedef struct lutf_entry {
