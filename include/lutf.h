@@ -63,11 +63,12 @@ typedef enum lutf_status {
 typedef void *(*lutf_fun_t)(void *);
 
 // 线程 id 类型
-typedef int32_t lutf_task_id_t;
+typedef uint32_t lutf_task_id_t;
 
 // 线程类型
 typedef struct lutf_thread {
     // 线程 id
+    // TODO: 线程 id 唯一性
     lutf_task_id_t id;
     // 线程状态
     lutf_status_t status;

@@ -431,7 +431,7 @@ __attribute__((destructor)) static int finit(void) {
             // 直接回收
             p->exit_value = NULL;
             p->status     = lutf_EXIT;
-            // BUG: 在 aarch64
+            // BUG: 在 aarch64 下会 SF
             free(p->stack);
             list_free(p->wait);
         }
