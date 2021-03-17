@@ -270,7 +270,7 @@ static void sig_alarm_handler(int signo __attribute__((unused))) {
                     break;
                 }
                 case lutf_WAIT: {
-                    printf("RUNNING: %d\n", env.curr_thread->id);
+                    printf("WAIT: %d\n", env.curr_thread->id);
                     wait_();
                     break;
                 }
@@ -287,17 +287,17 @@ static void sig_alarm_handler(int signo __attribute__((unused))) {
                 }
                 case lutf_EXIT: {
                     printf("EXIT: %d\n", env.curr_thread->id);
-                    // TODO:
-                    // 将退出状态的线程从链表中删除，同时标记等待其完成的线程
-                    // 这一操作不能太频繁
-                    if (count % 1000 == 0) {
-                        ;
-                    }
                     break;
                 }
             }
             // 循环直到 RUNNING 状态的线程
         } while (env.curr_thread->status != lutf_RUNNING);
+        // TODO:
+        // 将退出状态的线程从链表中删除，同时标记等待其完成的线程
+        // 这一操作不能太频繁
+        if (count % 1000 == 0) {
+            ;
+        }
         // 根据优先级调整运行时间
         switch (env.curr_thread->prior) {
             case LOW: {
@@ -542,7 +542,6 @@ int lutf_join(lutf_thread_t *thread, void **ret) {
     // 如果 setjmp 返回值不为 0，说明是从 thread 返回，
     // 这时 env->curr_thread 指向新的线程
     else {
-// TODO: GCC builtin stack switch
 #ifdef __x86_64__
         __asm__("mov %0, %%rsp"
                 :
@@ -559,7 +558,7 @@ int lutf_join(lutf_thread_t *thread, void **ret) {
     return 0;
 }
 
-int lutf_detach(lutf_thread_t *thread, void **ret) {
+int lutf_detach(lutf_thread_t *thread) {
     assert(thread != NULL);
     // 添加到线程管理结构
     add_list(thread);
@@ -578,33 +577,24 @@ int lutf_detach(lutf_thread_t *thread, void **ret) {
     // 如果 setjmp 返回值不为 0，说明是从 thread 返回，
     // 这时 env->curr_thread 指向新的线程
     else {
-// TODO: GCC builtin stack switch
 #ifdef __x86_64__
         __asm__("mov %0, %%rsp"
                 :
                 : "r"(env.curr_thread->stack + LUTF_STACK_SIZE));
 #endif
         // 执行函数
-        printf("&ret-1: %p\n", &ret);
-        printf("ret-1: %p\n", ret);
         env.curr_thread->func(env.curr_thread->arg);
-        // BUG: ret 的地址变成 0x03
-        printf("&ret: %p\n", &ret);
-        printf("ret: %p\n", ret);
-        if (ret != NULL) {
-            printf("&ret: %p\n", &ret);
-            printf("ret: %p\n", ret);
-            printf("*ret: %d\n", *ret);
-            *ret = env.curr_thread->exit_value;
-        }
         env.curr_thread->status = lutf_EXIT;
         raise(SIGVTALRM);
     }
     return 0;
 }
 
+// BUG: (gcc-10, clang-12) 与 gcc-7 的行为不一致，会将 3 号进程设为 WAIT，而不是
+// 0
 int lutf_wait(lutf_thread_t *thread, size_t size) {
     UNTICK();
+    printf("wait: %d\n", env.curr_thread->id);
     env.curr_thread->status = lutf_WAIT;
     for (size_t i = 0; i < size; i++) {
         // 将新进程添加到当前进程的等待链表

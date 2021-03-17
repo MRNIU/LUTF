@@ -76,19 +76,15 @@ static int _detach_exit_wait(void) {
     lutf_thread_t *threads = (lutf_thread_t *)malloc(3 * sizeof(lutf_thread_t));
     char *         arg[3]  = {"This is test1 arg", "This is test2 arg",
                     "This is test3 arg"};
-    void **        ret     = malloc(3 * sizeof(char *));
     assert(lutf_create(&threads[0], test1, (void *)arg[0]) == 0);
     assert(lutf_create(&threads[1], test2, (void *)arg[1]) == 0);
     assert(lutf_create(&threads[2], test3, (void *)arg[2]) == 0);
     // 开始运行
-    lutf_detach(&threads[0], &ret[0]);
-    lutf_detach(&threads[1], &ret[1]);
-    lutf_detach(&threads[2], &ret[2]);
+    lutf_detach(&threads[0]);
+    lutf_detach(&threads[1]);
+    lutf_detach(&threads[2]);
     // 等待退出
     lutf_wait(threads, 3);
-    // assert(strcmp("This is test1 exit value", (char *)ret[0]) == 0);
-    // assert(strcmp("This is test2 exit value", (char *)ret[1]) == 0);
-    // assert(strcmp("This is test3 exit value", (char *)ret[2]) == 0);
     printf("end\n");
     return 0;
 }

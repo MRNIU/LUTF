@@ -154,9 +154,8 @@ int lutf_create(lutf_thread_t *thread, lutf_fun_t fun, void *arg);
 int lutf_join(lutf_thread_t *thread, void **ret);
 // 当前线程与 thread 并发执行
 // thread: 要并发的线程
-// ret: 线程返回值
 // 返回值：成功返回 0
-int lutf_detach(lutf_thread_t *thread, void **ret);
+int lutf_detach(lutf_thread_t *thread);
 // 等待 detach 的线程执行完毕
 // thread: 要等待的线程数组
 // size: 数量
