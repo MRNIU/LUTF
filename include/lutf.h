@@ -116,6 +116,7 @@ typedef enum {
 
 // 优先级
 typedef enum {
+    NONE = 0,
     LOW  = 1,
     MID  = 2,
     HIGH = 3,

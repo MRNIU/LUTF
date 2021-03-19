@@ -56,7 +56,7 @@ struct sigaction sig_act;
 
 // 释放 list
 // list: 要释放的 list
-static int list_free(lutf_entry_t *list) {
+static inline int list_free(lutf_entry_t *list) {
     lutf_entry_t *entry;
     entry = list;
     while (entry != NULL) {
@@ -72,7 +72,8 @@ static int list_free(lutf_entry_t *list) {
 // list: 要插入的链表
 // data: 要插入的数据
 // 返回值：成功返回新链表项，失败返回 NULL
-static lutf_entry_t *list_prepend(lutf_entry_t **list, lutf_thread_t *data) {
+static inline lutf_entry_t *list_prepend(lutf_entry_t **list,
+                                         lutf_thread_t *data) {
     lutf_entry_t *newentry;
     if (list == NULL) {
         return NULL;
@@ -95,7 +96,8 @@ static lutf_entry_t *list_prepend(lutf_entry_t **list, lutf_thread_t *data) {
 // list: 要插入的链表
 // data: 要插入的数据
 // 返回值：成功返回新链表项，失败返回 NULL
-static lutf_entry_t *list_append(lutf_entry_t **list, lutf_thread_t *data) {
+static inline lutf_entry_t *list_append(lutf_entry_t **list,
+                                        lutf_thread_t *data) {
     lutf_entry_t *rover;
     lutf_entry_t *newentry;
     if (list == NULL) {
@@ -124,7 +126,7 @@ static lutf_entry_t *list_append(lutf_entry_t **list, lutf_thread_t *data) {
 // 返回前一项
 // listentry: 要处理的链表项
 // 返回值：成功返回前一项，失败返回 NULL
-static lutf_entry_t *list_prev(lutf_entry_t *listentry) {
+static inline lutf_entry_t *list_prev(lutf_entry_t *listentry) {
     if (listentry == NULL) {
         return NULL;
     }
@@ -134,7 +136,7 @@ static lutf_entry_t *list_prev(lutf_entry_t *listentry) {
 // 返回下一项
 // listentry: 要处理的链表项
 // 返回值：成功返回下一项，失败返回 NULL
-static lutf_entry_t *list_next(lutf_entry_t *listentry) {
+static inline lutf_entry_t *list_next(lutf_entry_t *listentry) {
     if (listentry == NULL) {
         return NULL;
     }
@@ -144,7 +146,7 @@ static lutf_entry_t *list_next(lutf_entry_t *listentry) {
 // 返回数据
 // listentry: 要处理的链表项
 // 返回值：成功返回数据，失败返回 NULL
-static lutf_thread_t *list_data(lutf_entry_t *listentry) {
+static inline lutf_thread_t *list_data(lutf_entry_t *listentry) {
     if (listentry == NULL) {
         return NULL;
     }
@@ -155,7 +157,7 @@ static lutf_thread_t *list_data(lutf_entry_t *listentry) {
 // list: 要处理的链表
 // n: 第 n 项
 // 返回值：成功返回链表项，失败返回 NULL
-static lutf_entry_t *list_nth_entry(lutf_entry_t *list, unsigned int n) {
+static inline lutf_entry_t *list_nth_entry(lutf_entry_t *list, unsigned int n) {
     lutf_entry_t *entry;
     unsigned int  i;
     entry = list;
@@ -172,7 +174,7 @@ static lutf_entry_t *list_nth_entry(lutf_entry_t *list, unsigned int n) {
 // list: 要处理的链表
 // n: 第 n 项
 // 返回值：成功返回链表项数据，失败返回 NULL
-static lutf_thread_t *list_nth_data(lutf_entry_t *list, unsigned int n) {
+static inline lutf_thread_t *list_nth_data(lutf_entry_t *list, unsigned int n) {
     lutf_entry_t *entry;
     entry = list_nth_entry(list, n);
     if (entry == NULL) {
@@ -184,7 +186,7 @@ static lutf_thread_t *list_nth_data(lutf_entry_t *list, unsigned int n) {
 // 返回链表长度
 // list: 要处理的链表
 // 返回值：链表长度
-static unsigned int list_length(lutf_entry_t *list) {
+static inline unsigned int list_length(lutf_entry_t *list) {
     lutf_entry_t *entry;
     unsigned int  length;
     length = 0;
@@ -200,7 +202,7 @@ static unsigned int list_length(lutf_entry_t *list) {
 // list: 要处理的链表
 // entry: 要删除的项
 // 返回值：成功返回 0
-static int list_remove_entry(lutf_entry_t **list, lutf_entry_t *entry) {
+static inline int list_remove_entry(lutf_entry_t **list, lutf_entry_t *entry) {
     if (list == NULL || *list == NULL || entry == NULL) {
         return 0;
     }
@@ -245,6 +247,31 @@ static int wait_(void) {
     }
     if (flag == 1) {
         env.curr_thread->status = lutf_RUNNING;
+    }
+    return 0;
+}
+
+static inline int set_itimer(lutf_prior_t p) {
+    // 根据优先级调整运行时间
+    switch (env.curr_thread->prior) {
+        case NONE: {
+            break;
+        }
+        case LOW: {
+            // 开启 timer
+            TICK(&tick_low);
+            break;
+        }
+        case MID: {
+            // 开启 timer
+            TICK(&tick_mid);
+            break;
+        }
+        case HIGH: {
+            // 开启 timer
+            TICK(&tick_high);
+            break;
+        }
     }
     return 0;
 }
@@ -298,24 +325,7 @@ static void sig_alarm_handler(int signo __attribute__((unused))) {
         if (count % 1000 == 0) {
             ;
         }
-        // 根据优先级调整运行时间
-        switch (env.curr_thread->prior) {
-            case LOW: {
-                // 开启 timer
-                TICK(&tick_low);
-                break;
-            }
-            case MID: {
-                // 开启 timer
-                TICK(&tick_mid);
-                break;
-            }
-            case HIGH: {
-                // 开启 timer
-                TICK(&tick_high);
-                break;
-            }
-        }
+        set_itimer(env.curr_thread->prior);
         // 获取剩余时间
         // getitimer(ITIMER_VIRTUAL, &left);
         // 开始执行
