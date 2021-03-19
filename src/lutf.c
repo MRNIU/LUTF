@@ -253,7 +253,7 @@ static int wait_(void) {
 
 static inline int set_itimer(lutf_prior_t p) {
     // 根据优先级调整运行时间
-    switch (env.curr_thread->prior) {
+    switch (p) {
         case NONE: {
             break;
         }
@@ -278,8 +278,8 @@ static inline int set_itimer(lutf_prior_t p) {
 
 // 对周期处理的操作计数
 static size_t count = 0;
-// 时钟信号处理
-static void sig_alarm_handler(int signo __attribute__((unused))) {
+
+static void sched(int signo __attribute__((unused))) {
     count++;
     if (sigsetjmp(env.curr_thread->context, SIGVTALRM) == 0) {
         do {
@@ -313,61 +313,7 @@ static void sig_alarm_handler(int signo __attribute__((unused))) {
                     break;
                 }
                 case lutf_EXIT: {
-                    printf("EXIT: %d\n", env.curr_thread->id);
-                    break;
-                }
-            }
-            // 循环直到 RUNNING 状态的线程
-        } while (env.curr_thread->status != lutf_RUNNING);
-        // TODO:
-        // 将退出状态的线程从链表中删除，同时标记等待其完成的线程
-        // 这一操作不能太频繁
-        if (count % 1000 == 0) {
-            ;
-        }
-        set_itimer(env.curr_thread->prior);
-        // 获取剩余时间
-        // getitimer(ITIMER_VIRTUAL, &left);
-        // 开始执行
-        // 会返回到 lutf_join 处的 setjmp
-        siglongjmp(env.curr_thread->context, 1);
-    }
-}
-
-static int fifo_handler(void) {
-    count++;
-    if (setjmp(env.curr_thread->context) == 0) {
-        do {
-            // 切换到下个线程
-            env.curr_thread = env.curr_thread->next;
-            // 根据状态
-            switch (env.curr_thread->status) {
-                // 跳过
-                case lutf_READY: {
-                    printf("READY: %d\n", env.curr_thread->id);
-                    break;
-                }
-                case lutf_RUNNING: {
-                    printf("RUNNING: %d\n", env.curr_thread->id);
-                    break;
-                }
-                case lutf_WAIT: {
-                    printf("WAIT: %d\n", env.curr_thread->id);
-                    break;
-                }
-                case lutf_SLEEP: {
-                    printf("SLEEP\n");
-                    if (clock() > env.curr_thread->resume_time) {
-                        env.curr_thread->status = lutf_RUNNING;
-                    }
-                    break;
-                }
-                case lutf_SEM: {
-                    printf("SEM\n");
-                    break;
-                }
-                case lutf_EXIT: {
-                    printf("EXIT: %d\n", env.curr_thread->id);
+                    // printf("EXIT: %d\n", env.curr_thread->id);
                     // TODO:
                     // 将退出状态的线程从链表中删除，同时标记等待其完成的线程
                     // 这一操作不能太频繁
@@ -377,13 +323,19 @@ static int fifo_handler(void) {
                     break;
                 }
             }
-            // 循环直到 RUNNING 状态的线程
         } while (env.curr_thread->status != lutf_RUNNING);
-        // 开始执行
-        // 会返回到 lutf_join 处的 setjmp
-        longjmp(env.curr_thread->context, 1);
+        // TODO:
+        // 将退出状态的线程从链表中删除，同时标记等待其完成的线程
+        // 这一操作不能太频繁
+        if (count % 1000 == 0) {
+            ;
+        }
+        if (env.sched_method == TIME) {
+            set_itimer(env.curr_thread->prior);
+        }
+        siglongjmp(env.curr_thread->context, 1);
     }
-    return 0;
+    return;
 }
 
 // 构造函数，在 main 之前执行
@@ -477,7 +429,7 @@ int lutf_set_sched(lutf_sched_t method) {
     // 之前是 FIFO，现在换成 TIME
     else if (method == TIME) {
         // 注册信号处理函数
-        sig_act.sa_handler = sig_alarm_handler;
+        sig_act.sa_handler = sched;
         sig_act.sa_flags   = 0;
         sigemptyset(&sig_act.sa_mask);
         // 注册信号捕捉函数。
@@ -573,7 +525,7 @@ static int run(lutf_thread_t *thread, void **ret) {
             raise(SIGVTALRM);
         }
         else {
-            fifo_handler();
+            sched(SIGVTALRM);
         }
     }
     return 0;
