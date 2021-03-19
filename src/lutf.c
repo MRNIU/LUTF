@@ -254,7 +254,7 @@ static size_t count = 0;
 // 时钟信号处理
 static void sig_alarm_handler(int signo __attribute__((unused))) {
     count++;
-    if (setjmp(env.curr_thread->context) == 0) {
+    if (sigsetjmp(env.curr_thread->context, SIGVTALRM) == 0) {
         do {
             // 切换到下个线程
             env.curr_thread = env.curr_thread->next;
@@ -320,7 +320,7 @@ static void sig_alarm_handler(int signo __attribute__((unused))) {
         // getitimer(ITIMER_VIRTUAL, &left);
         // 开始执行
         // 会返回到 lutf_join 处的 setjmp
-        longjmp(env.curr_thread->context, 1);
+        siglongjmp(env.curr_thread->context, 1);
     }
 }
 
@@ -491,6 +491,7 @@ int lutf_create(lutf_thread_t *thread, lutf_fun_t fun, void *arg) {
     // 设置为 READY
     thread->status = lutf_READY;
     thread->stack  = (char *)malloc(LUTF_STACK_SIZE);
+    printf("stack: %p\n", thread->stack);
     assert(thread->stack != NULL);
     // 要执行的函数指针
     thread->func = fun;
@@ -522,7 +523,7 @@ static int add_list(lutf_thread_t *thread) {
     return 0;
 }
 
-//保证局部变量在longjmp过程中一直保存它的值的方法：把它声明为volatile变量。（适合那些在setjmp执行和longjmp返回之间会改变的变量）。
+// 保证局部变量在longjmp过程中一直保存它的值的方法：把它声明为volatile变量。（适合那些在setjmp执行和longjmp返回之间会改变的变量）。
 // 存放在内存中的变量，将具有调用longjmp时的值，而在CPU和浮点寄存器中的变量则恢复为调用setjmp函数时的值。
 // 优化编译时，register和auto变量都存放在寄存器中，而volatile变量仍存放在内存。
 
@@ -571,14 +572,14 @@ int lutf_detach(lutf_thread_t *thread) {
     add_list(thread);
     // 初始化 thread 的上下文
     // 如果不是从 thread 返回，即还没有运行
-    if (setjmp(thread->context) == 0) {
+    if (sigsetjmp(thread->context, SIGVTALRM) == 0) {
         // 将状态更改为 RUNNING
         thread->status = lutf_RUNNING;
         // 等待执行
-        if (setjmp(env.curr_thread->context) == 0) {
+        if (sigsetjmp(env.curr_thread->context, SIGVTALRM) == 0) {
             // 将 thread 设为当前线程
             env.curr_thread = thread;
-            longjmp(thread->context, 1);
+            siglongjmp(thread->context, 1);
         }
     }
     // 如果 setjmp 返回值不为 0，说明是从 thread 返回，
@@ -587,11 +588,13 @@ int lutf_detach(lutf_thread_t *thread) {
 #if defined(__x86_64__)
         __asm__("mov %0, %%rsp"
                 :
-                : "r"(env.curr_thread->stack + LUTF_STACK_SIZE));
+                : "r"(env.curr_thread->stack + LUTF_STACK_SIZE)
+                : "rsp");
 #elif defined(__aarch64__)
         __asm__("mov sp, %[stack]"
                 :
-                : [stack] "r"((env.curr_thread->stack + LUTF_STACK_SIZE)));
+                : [stack] "r"((env.curr_thread->stack + LUTF_STACK_SIZE))
+                : "sp");
 #endif
         // 执行函数
         env.curr_thread->func(env.curr_thread->arg);
@@ -608,6 +611,7 @@ int lutf_wait(lutf_thread_t *thread, size_t size) {
     for (size_t i = 0; i < size; i++) {
         // 将新进程添加到当前进程的等待链表
         list_append(&env.curr_thread->wait, &thread[i]);
+        printf("id: %d\n", thread[i].id);
     }
     raise(SIGVTALRM);
     return 0;
@@ -620,7 +624,7 @@ int lutf_exit(void *value) {
     assert(env.curr_thread != env.main_thread);
     env.curr_thread->exit_value = value;
     env.curr_thread->status     = lutf_EXIT;
-    free(env.curr_thread->stack);
+    // free(env.curr_thread->stack);
     env.curr_thread->stack = NULL;
     list_free(env.curr_thread->wait);
     if (env.sched_method == TIME) {
@@ -717,7 +721,7 @@ int lutf_V(lutf_S_t *s) {
         s->s += 1;
         s->queue[labs(s->s)]->status = lutf_RUNNING;
     }
-    assert(setitimer(ITIMER_VIRTUAL, &tick_cancel, NULL) == 0);
+    UNTICK();
     return 0;
 }
 

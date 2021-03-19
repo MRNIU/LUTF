@@ -20,7 +20,7 @@ static void *test1(void *arg) {
     if (arg != NULL) {
         printf("arg: %s\n", (char *)arg);
     }
-    for (size_t i = 0; i < 10000; i++) {
+    for (size_t i = 0; i < 100000; i++) {
         printf("test1\n");
     }
     lutf_exit((void *)"This is test1 exit value");
@@ -32,7 +32,7 @@ static void *test2(void *arg) {
         printf("arg: %s\n", (char *)arg);
     }
     // Do some calculations
-    for (size_t i = 0; i < 10000; i++) {
+    for (size_t i = 0; i < 100000; i++) {
         printf("test2\n");
     }
     lutf_exit((void *)"This is test2 exit value");
@@ -43,7 +43,7 @@ static void *test3(void *arg) {
     if (arg != NULL) {
         printf("arg: %s\n", (char *)arg);
     }
-    for (size_t i = 0; i < 10000; i++) {
+    for (size_t i = 0; i < 100000; i++) {
         printf("test3\n");
     }
     lutf_exit((void *)"This is test3 exit value");
@@ -84,6 +84,7 @@ static int _detach_exit_wait(void) {
     lutf_detach(&threads[1]);
     lutf_detach(&threads[2]);
     // 等待退出
+    printf("wait begin\n");
     lutf_wait(threads, 3);
     printf("end\n");
     return 0;
