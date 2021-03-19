@@ -26,7 +26,7 @@ void run_tests(UnitTestFunction *tests) {
 }
 
 static UnitTestFunction tests[] = {
-    // fifo,
+    fifo,
     time_,
     NULL,
 };

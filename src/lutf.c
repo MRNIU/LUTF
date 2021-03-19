@@ -523,50 +523,7 @@ static int add_list(lutf_thread_t *thread) {
     return 0;
 }
 
-// 保证局部变量在longjmp过程中一直保存它的值的方法：把它声明为volatile变量。（适合那些在setjmp执行和longjmp返回之间会改变的变量）。
-// 存放在内存中的变量，将具有调用longjmp时的值，而在CPU和浮点寄存器中的变量则恢复为调用setjmp函数时的值。
-// 优化编译时，register和auto变量都存放在寄存器中，而volatile变量仍存放在内存。
-
-int lutf_join(lutf_thread_t *thread, void **ret) {
-    assert(thread != NULL);
-    // 添加到线程管理结构
-    add_list(thread);
-    // 初始化 thread 的上下文
-    // 如果不是从 thread 返回，即还没有运行
-    if (setjmp(thread->context) == 0) {
-        // 将状态更改为 RUNNING
-        thread->status = lutf_RUNNING;
-        // 等待执行
-        if (setjmp(env.curr_thread->context) == 0) {
-            // 将 thread 设为当前线程
-            env.curr_thread = thread;
-            longjmp(thread->context, 1);
-        }
-    }
-    // 如果 setjmp 返回值不为 0，说明是从 thread 返回，
-    // 这时 env->curr_thread 指向新的线程
-    else {
-#if defined(__x86_64__)
-        __asm__("mov %0, %%rsp"
-                :
-                : "r"(env.curr_thread->stack + LUTF_STACK_SIZE));
-#elif defined(__aarch64__)
-        __asm__("mov sp, %[stack]"
-                :
-                : [stack] "r"((env.curr_thread->stack + LUTF_STACK_SIZE)));
-#endif
-        // 执行函数
-        env.curr_thread->func(env.curr_thread->arg);
-        if (ret != NULL) {
-            *ret = env.curr_thread->exit_value;
-        }
-        env.curr_thread->status = lutf_EXIT;
-        fifo_handler();
-    }
-    return 0;
-}
-
-int lutf_detach(lutf_thread_t *thread) {
+static int run(lutf_thread_t *thread, void **ret) {
     assert(thread != NULL);
     // 添加到线程管理结构
     add_list(thread);
@@ -598,10 +555,28 @@ int lutf_detach(lutf_thread_t *thread) {
 #endif
         // 执行函数
         env.curr_thread->func(env.curr_thread->arg);
+        if (ret != NULL) {
+            *ret = env.curr_thread->exit_value;
+        }
         env.curr_thread->status = lutf_EXIT;
-        raise(SIGVTALRM);
+        if (env.sched_method == TIME) {
+            raise(SIGVTALRM);
+        }
+        else {
+            fifo_handler();
+        }
     }
     return 0;
+}
+
+int lutf_join(lutf_thread_t *thread, void **ret) {
+    assert(thread != NULL);
+    return run(thread, ret);
+}
+
+int lutf_detach(lutf_thread_t *thread) {
+    assert(thread != NULL);
+    return run(thread, NULL);
 }
 
 int lutf_wait(lutf_thread_t *thread, size_t size) {
