@@ -586,30 +586,6 @@ int lutf_equal(lutf_thread_t *thread1, lutf_thread_t *thread2) {
     if (thread1->id != thread2->id) {
         return 0;
     }
-    if (thread1->status != thread2->status) {
-        return 0;
-    }
-    if (thread1->func != thread2->func) {
-        return 0;
-    }
-    if (thread1->arg != thread2->arg) {
-        return 0;
-    }
-    if (thread1->exit_value != thread2->exit_value) {
-        return 0;
-    }
-    if (thread1->context != thread2->context) {
-        return 0;
-    }
-    if (thread1->prev != thread2->prev) {
-        return 0;
-    }
-    if (thread1->next != thread2->next) {
-        return 0;
-    }
-    if (thread1->wait != thread2->wait) {
-        return 0;
-    }
     return 1;
 }
 
