@@ -366,7 +366,12 @@ __attribute__((constructor)) static int init(void) {
     env.main_thread = thread_main;
     env.curr_thread = thread_main;
     // 默认调度方式
-    env.sched_method = FIFO;
+    env.sched_method   = FIFO;
+    sig_act.sa_handler = sched;
+    sig_act.sa_flags   = 0;
+    sigemptyset(&sig_act.sa_mask);
+    // 注册信号捕捉函数。
+    sigaction(SIGVTALRM, &sig_act, NULL);
     return 0;
 }
 
@@ -378,13 +383,13 @@ __attribute__((destructor)) static int finit(void) {
         printf("finit: TIME\n");
         // 取消时钟
         UNTICK();
-        // 恢复之前的系统默认信号和默认信号处理。
-        // 将 SIGVTALRM 重置为默认
-        sig_act.sa_handler = SIG_DFL;
-        sigemptyset(&sig_act.sa_mask);
-        sig_act.sa_flags = SA_RESETHAND;
-        sigaction(SIGVTALRM, &sig_act, 0);
     }
+    // 恢复之前的系统默认信号和默认信号处理。
+    // 将 SIGVTALRM 重置为默认
+    sig_act.sa_handler = SIG_DFL;
+    sigemptyset(&sig_act.sa_mask);
+    sig_act.sa_flags = SA_RESETHAND;
+    sigaction(SIGVTALRM, &sig_act, 0);
     // 如果还有线程没有退出
     lutf_thread_t *p = env.main_thread->next;
     while (p != env.main_thread) {
@@ -393,10 +398,7 @@ __attribute__((destructor)) static int finit(void) {
             // 直接回收
             p->exit_value = NULL;
             p->status     = lutf_EXIT;
-            // BUG: 在 aarch64 下会 SF
-            if (p->stack != NULL) {
-                free(p->stack);
-            }
+            free(p->stack);
             list_free(p->wait);
         }
         p = p->next;
@@ -420,20 +422,10 @@ int lutf_set_sched(lutf_sched_t method) {
     if (method == FIFO) {
         // 取消定时器
         UNTICK();
-        // 将 SIGVTALRM 重置为默认
-        sig_act.sa_handler = SIG_DFL;
-        sigemptyset(&sig_act.sa_mask);
-        sig_act.sa_flags = SA_RESETHAND;
-        sigaction(SIGVTALRM, &sig_act, 0);
     }
     // 之前是 FIFO，现在换成 TIME
     else if (method == TIME) {
         // 注册信号处理函数
-        sig_act.sa_handler = sched;
-        sig_act.sa_flags   = 0;
-        sigemptyset(&sig_act.sa_mask);
-        // 注册信号捕捉函数。
-        sigaction(SIGVTALRM, &sig_act, NULL);
         TICK(&tick_mid);
     }
     return 0;
