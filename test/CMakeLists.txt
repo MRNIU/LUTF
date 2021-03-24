@@ -15,4 +15,3 @@ set(test_src
 link_libraries(${LIBNAME})
 
 add_executable(test ${test_src})
-

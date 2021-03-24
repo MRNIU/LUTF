@@ -90,19 +90,6 @@ static int _detach_exit_wait(void) {
     return 0;
 }
 
-// static int _self(void) {
-//     return 0;
-// }
-// static int _equal(void) {
-//     return 0;
-// }
-// static int _cancel(void) {
-//     return 0;
-// }
-// static int _sync(void) {
-//     return 0;
-// }
-
 // 百万级测试
 static int _million(void) {
 #define COUNT 2000
@@ -128,8 +115,6 @@ static int _million(void) {
     return 0;
 }
 
-// 测试顺序
-// create，join，exit，wait，self，equal，cancel，sync
 int time_(void) {
     printf("--------TIME--------\n");
     printf(

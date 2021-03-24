@@ -16,14 +16,12 @@ extern "C" {
 #include "time.h"
 #include "lutf.h"
 
-// 全局状态
 static lutf_env_t env = {
     .nid         = 0,
     .main_thread = NULL,
     .curr_thread = NULL,
 };
 
-// 取消所有定时
 struct itimerval tick_cancel = {
     .it_interval.tv_sec  = 0,
     .it_interval.tv_usec = 0,
@@ -51,11 +49,8 @@ struct itimerval tick_high = {
     .it_value.tv_usec    = 2 * SLICE,
 };
 
-// 信号处理
 struct sigaction sig_act;
 
-// 释放 list
-// list: 要释放的 list
 static inline int list_free(lutf_entry_t *list) {
     lutf_entry_t *entry;
     entry = list;
@@ -68,10 +63,6 @@ static inline int list_free(lutf_entry_t *list) {
     return 0;
 }
 
-// 在 list 头部插入
-// list: 要插入的链表
-// data: 要插入的数据
-// 返回值：成功返回新链表项，失败返回 NULL
 static inline lutf_entry_t *list_prepend(lutf_entry_t **list,
                                          lutf_thread_t *data) {
     lutf_entry_t *newentry;
@@ -92,10 +83,6 @@ static inline lutf_entry_t *list_prepend(lutf_entry_t **list,
     return newentry;
 }
 
-// 在 list 尾部插入
-// list: 要插入的链表
-// data: 要插入的数据
-// 返回值：成功返回新链表项，失败返回 NULL
 static inline lutf_entry_t *list_append(lutf_entry_t **list,
                                         lutf_thread_t *data) {
     lutf_entry_t *rover;
@@ -123,9 +110,6 @@ static inline lutf_entry_t *list_append(lutf_entry_t **list,
     return newentry;
 }
 
-// 返回前一项
-// listentry: 要处理的链表项
-// 返回值：成功返回前一项，失败返回 NULL
 static inline lutf_entry_t *list_prev(lutf_entry_t *listentry) {
     if (listentry == NULL) {
         return NULL;
@@ -133,9 +117,6 @@ static inline lutf_entry_t *list_prev(lutf_entry_t *listentry) {
     return listentry->prev;
 }
 
-// 返回下一项
-// listentry: 要处理的链表项
-// 返回值：成功返回下一项，失败返回 NULL
 static inline lutf_entry_t *list_next(lutf_entry_t *listentry) {
     if (listentry == NULL) {
         return NULL;
@@ -143,9 +124,6 @@ static inline lutf_entry_t *list_next(lutf_entry_t *listentry) {
     return listentry->next;
 }
 
-// 返回数据
-// listentry: 要处理的链表项
-// 返回值：成功返回数据，失败返回 NULL
 static inline lutf_thread_t *list_data(lutf_entry_t *listentry) {
     if (listentry == NULL) {
         return NULL;
@@ -153,10 +131,6 @@ static inline lutf_thread_t *list_data(lutf_entry_t *listentry) {
     return listentry->data;
 }
 
-// 链表第 n 项
-// list: 要处理的链表
-// n: 第 n 项
-// 返回值：成功返回链表项，失败返回 NULL
 static inline lutf_entry_t *list_nth_entry(lutf_entry_t *list, unsigned int n) {
     lutf_entry_t *entry;
     unsigned int  i;
@@ -170,10 +144,6 @@ static inline lutf_entry_t *list_nth_entry(lutf_entry_t *list, unsigned int n) {
     return entry;
 }
 
-// 链表第 n 项数据
-// list: 要处理的链表
-// n: 第 n 项
-// 返回值：成功返回链表项数据，失败返回 NULL
 static inline lutf_thread_t *list_nth_data(lutf_entry_t *list, unsigned int n) {
     lutf_entry_t *entry;
     entry = list_nth_entry(list, n);
@@ -183,9 +153,6 @@ static inline lutf_thread_t *list_nth_data(lutf_entry_t *list, unsigned int n) {
     return entry->data;
 }
 
-// 返回链表长度
-// list: 要处理的链表
-// 返回值：链表长度
 static inline unsigned int list_length(lutf_entry_t *list) {
     lutf_entry_t *entry;
     unsigned int  length;
@@ -198,10 +165,6 @@ static inline unsigned int list_length(lutf_entry_t *list) {
     return length;
 }
 
-// 删除链表项
-// list: 要处理的链表
-// entry: 要删除的项
-// 返回值：成功返回 0
 static inline int list_remove_entry(lutf_entry_t **list, lutf_entry_t *entry) {
     if (list == NULL || *list == NULL || entry == NULL) {
         return 0;
@@ -222,7 +185,6 @@ static inline int list_remove_entry(lutf_entry_t **list, lutf_entry_t *entry) {
     return 0;
 }
 
-// 锁，暂时关闭时钟
 #define TICK(x)                                                                \
     do {                                                                       \
         assert(setitimer(ITIMER_VIRTUAL, x, NULL) == 0);                       \
@@ -533,14 +495,14 @@ int lutf_detach(lutf_thread_t *thread) {
     return run(thread, NULL);
 }
 
-int lutf_wait(lutf_thread_t *thread, size_t size) {
+int lutf_wait(lutf_thread_t *threads, size_t size) {
     UNTICK();
     printf("wait: %d\n", env.curr_thread->id);
     env.curr_thread->status = lutf_WAIT;
     for (size_t i = 0; i < size; i++) {
         // 将新进程添加到当前进程的等待链表
-        list_append(&env.curr_thread->wait, &thread[i]);
-        printf("id: %d\n", thread[i].id);
+        list_append(&env.curr_thread->wait, &threads[i]);
+        printf("id: %d\n", threads[i].id);
     }
     raise(SIGVTALRM);
     return 0;
