@@ -8,4 +8,4 @@ include_directories(${LUTF_SOURCE_DIR}/include)
 set(src
     ${LUTF_SOURCE_CODE_DIR}/lutf.c)
 
-add_library(${LIBNAME} STATIC ${src})
+add_library(${LIBNAME} SHARED ${src})

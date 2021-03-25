@@ -19,15 +19,15 @@ set(CMAKE_C_FLAGS_RELEASE "-Wall -Wextra -Werror -O0")
 set(LIBNAME lutf)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 if(${LUTF_SOURCE_DIR} STREQUAL ${LUTF_BINARY_DIR})
     message(FATAL_ERROR "In-source builds not allowed. Please make a new directory (called a build directory) and run CMake from there.")
 endif()
 message(STATUS "C compiler: ${CMAKE_C_COMPILER_ID}, version: ${CMAKE_C_COMPILER_VERSION}")
 message(STATUS "C FLAGS: ${CMAKE_C_FLAGS_DEBUG}")
-message(STATUS "lib dir: ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}")
 message(STATUS "test dir: ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+message(STATUS "lib dir: ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
 
 set(LUTF_SOURCE_CODE_DIR ${LUTF_SOURCE_DIR}/src)
 
