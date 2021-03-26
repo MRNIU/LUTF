@@ -251,27 +251,27 @@ static void sched(int signo __attribute__((unused))) {
             switch (env.curr_thread->status) {
                 // 跳过
                 case lutf_READY: {
-                    printf("READY: %d\n", env.curr_thread->id);
+                    // printf("READY: %d\n", env.curr_thread->id);
                     break;
                 }
                 case lutf_RUNNING: {
-                    printf("RUNNING: %d\n", env.curr_thread->id);
+                    // printf("RUNNING: %d\n", env.curr_thread->id);
                     break;
                 }
                 case lutf_WAIT: {
-                    printf("WAIT: %d\n", env.curr_thread->id);
+                    // printf("WAIT: %d\n", env.curr_thread->id);
                     wait_();
                     break;
                 }
                 case lutf_SLEEP: {
-                    printf("SLEEP\n");
+                    // printf("SLEEP\n");
                     if (clock() > env.curr_thread->resume_time) {
                         env.curr_thread->status = lutf_RUNNING;
                     }
                     break;
                 }
                 case lutf_SEM: {
-                    printf("SEM\n");
+                    // printf("SEM\n");
                     break;
                 }
                 case lutf_EXIT: {
@@ -407,7 +407,7 @@ int lutf_create(lutf_thread_t *thread, lutf_fun_t fun, void *arg) {
     // 设置为 READY
     thread->status = lutf_READY;
     thread->stack  = (char *)malloc(LUTF_STACK_SIZE);
-    printf("stack: %p\n", thread->stack);
+    // printf("stack: %p\n", thread->stack);
     assert(thread->stack != NULL);
     // 要执行的函数指针
     thread->func = fun;
@@ -556,8 +556,7 @@ int lutf_cancel(lutf_thread_t *thread) {
 
 lutf_S_t *lutf_createS(int ss) {
     assert(env.sched_method == TIME);
-    lutf_S_t *s;
-    s = malloc(sizeof(lutf_S_t));
+    lutf_S_t *s = malloc(sizeof(lutf_S_t));
     assert(s != NULL);
     s->s     = ss;
     s->size  = SEM_SIZE;
@@ -569,7 +568,7 @@ int lutf_P(lutf_S_t *s) {
     assert(env.sched_method == TIME);
     if (s->s > 0) {
         s->s -= 1;
-        assert(setitimer(ITIMER_VIRTUAL, &tick_cancel, NULL) == 0);
+        UNTICK();
     }
     else {
         s->s -= 1;

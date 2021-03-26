@@ -21,7 +21,7 @@ static void *test1(void *arg) {
         printf("arg: %s\n", (char *)arg);
     }
     for (size_t i = 0; i < 10; i++) {
-        printf("test1\n");
+        printf("test1");
     }
     lutf_exit((void *)"This is test1 exit value");
     return NULL;
@@ -33,7 +33,7 @@ static void *test2(void *arg) {
     }
     // Do some calculations
     for (size_t i = 0; i < 10; i++) {
-        printf("test2\n");
+        printf("test2");
     }
     lutf_exit((void *)"This is test2 exit value");
     return NULL;
@@ -44,33 +44,9 @@ static void *test3(void *arg) {
         printf("arg: %s\n", (char *)arg);
     }
     for (size_t i = 0; i < 10; i++) {
-        printf("test3\n");
+        printf("test3");
     }
     lutf_exit((void *)"This is test3 exit value");
-    return NULL;
-}
-
-static void *test4(void *arg) {
-    if (arg != NULL) {
-        printf("arg: %d\n", *(uint32_t *)arg);
-    }
-    while (1) {
-        printf("test4\n");
-    }
-    lutf_exit(arg);
-    return NULL;
-}
-
-static void *test5(void *arg) {
-    if (arg != NULL) {
-        printf("arg: %d\n", *(uint32_t *)arg);
-    }
-    // Do some calculations
-    // for (size_t i = 0; i < CLOCKS_PER_SEC; i++) {
-    while (1) {
-        printf("test5\n");
-    }
-    lutf_exit(arg);
     return NULL;
 }
 
@@ -86,15 +62,93 @@ static int _detach_exit_wait(void) {
     lutf_detach(&threads[1]);
     lutf_detach(&threads[2]);
     // 等待退出
-    printf("wait begin\n");
     lutf_wait(threads, 3);
-    printf("end\n");
     return 0;
 }
 
-// 百万级测试
+#define N 20
+int          size    = N;
+int          current = 0;
+int          buffer[N];
+lutf_S_t *   empty;
+lutf_S_t *   full;
+lutf_S_t *   lock;
+static void *producter(void *arg) {
+    int item;
+    int i = 0;
+    while (1) {
+        item = i;
+        i++;
+        lutf_P(empty);
+        lutf_P(lock);
+        buffer[current] = item;
+        current += 1;
+        lutf_V(lock);
+        lutf_V(full);
+        printf("product: %d: %d, size: %d\n", lutf_self()->id, item, current);
+    }
+    lutf_exit(NULL);
+    return NULL;
+}
+
+static void *consumer(void *arg) {
+    int item;
+    for (size_t i = 0; i < N; i++) {
+        lutf_P(full);
+        lutf_P(lock);
+        current -= 1;
+        item = buffer[current];
+        lutf_V(lock);
+        lutf_V(empty);
+        printf("consume: %d: %d, size: %d\n", lutf_self()->id, item, current);
+    }
+    lutf_exit(NULL);
+    return NULL;
+}
+
+static int _sync(void) {
+    lutf_thread_t *p = (lutf_thread_t *)malloc(2 * sizeof(lutf_thread_t));
+    lutf_thread_t *c = (lutf_thread_t *)malloc(4 * sizeof(lutf_thread_t));
+    empty            = lutf_createS(size);
+    full             = lutf_createS(0);
+    lock             = lutf_createS(1);
+    for (size_t i = 0; i < 2; i++) {
+        assert(lutf_create(&p[i], producter, NULL) == 0);
+        lutf_detach(&p[i]);
+    }
+    for (size_t i = 0; i < 4; i++) {
+        assert(lutf_create(&c[i], consumer, NULL) == 0);
+        lutf_detach(&c[i]);
+    }
+    lutf_wait(c, 4);
+    return 0;
+}
+
+static void *test4(void *arg) {
+    if (arg != NULL) {
+        printf("arg: %d\n", *(uint32_t *)arg);
+    }
+    for (size_t i = 0; i < CLOCKS_PER_SEC; i++) {
+        printf("test4");
+    }
+    lutf_exit(arg);
+    return NULL;
+}
+
+static void *test5(void *arg) {
+    if (arg != NULL) {
+        printf("arg: %d\n", *(uint32_t *)arg);
+    }
+    // Do some calculations
+    for (size_t i = 0; i < CLOCKS_PER_SEC; i++) {
+        printf("test5");
+    }
+    lutf_exit(arg);
+    return NULL;
+}
+
 static int _million(void) {
-#define COUNT 50
+#define COUNT 10
     lutf_thread_t *threads =
         (lutf_thread_t *)malloc(COUNT * sizeof(lutf_thread_t));
     uint32_t *arg = (uint32_t *)malloc(COUNT * sizeof(uint32_t));
@@ -129,12 +183,12 @@ int time_(void) {
     // assert(_equal() == 0);
     // printf("----cancel----\n");
     // assert(_cancel() == 0);
-    // printf("----sync----\n");
-    // assert(_sync() == 0);
+    printf("----sync----\n");
+    assert(_sync() == 0);
     printf("----million----\n");
     printf("Create a million threads, run and output its return value.\n");
     printf("Functions used are: lutf_create, lutf_detach, lutf_exit.\n");
-    assert(_million() == 0);
+    // assert(_million() == 0);
     printf("--------TIME END--------\n");
     return 0;
 }
