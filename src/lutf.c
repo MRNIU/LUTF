@@ -458,12 +458,17 @@ static int run(lutf_thread_t *thread, void **ret) {
     // 如果 setjmp 返回值不为 0，说明是从 thread 返回，
     // 这时 env->curr_thread 指向新的线程
     else {
-#if defined(__x86_64__)
+#if defined(__i386__)
+        __asm__("mov %0, %%esp"
+                :
+                : "r"(env.curr_thread->stack + LUTF_STACK_SIZE)
+                : "esp");
+#elif defined(__x86_64__)
         __asm__("mov %0, %%rsp"
                 :
                 : "r"(env.curr_thread->stack + LUTF_STACK_SIZE)
                 : "rsp");
-#elif defined(__aarch64__)
+#elif defined(__arm__) | defined(__aarch64__)
         __asm__("mov sp, %[stack]"
                 :
                 : [stack] "r"((env.curr_thread->stack + LUTF_STACK_SIZE))
