@@ -20,7 +20,7 @@ static void *test1(void *arg) {
     if (arg != NULL) {
         printf("arg: %s\n", (char *)arg);
     }
-    for (size_t i = 0; i < 100000; i++) {
+    for (size_t i = 0; i < 10; i++) {
         printf("test1\n");
     }
     lutf_exit((void *)"This is test1 exit value");
@@ -32,7 +32,7 @@ static void *test2(void *arg) {
         printf("arg: %s\n", (char *)arg);
     }
     // Do some calculations
-    for (size_t i = 0; i < 100000; i++) {
+    for (size_t i = 0; i < 10; i++) {
         printf("test2\n");
     }
     lutf_exit((void *)"This is test2 exit value");
@@ -43,7 +43,7 @@ static void *test3(void *arg) {
     if (arg != NULL) {
         printf("arg: %s\n", (char *)arg);
     }
-    for (size_t i = 0; i < 100000; i++) {
+    for (size_t i = 0; i < 10; i++) {
         printf("test3\n");
     }
     lutf_exit((void *)"This is test3 exit value");
@@ -51,22 +51,24 @@ static void *test3(void *arg) {
 }
 
 static void *test4(void *arg) {
-    printf("test4\n");
     if (arg != NULL) {
         printf("arg: %d\n", *(uint32_t *)arg);
+    }
+    while (1) {
+        printf("test4\n");
     }
     lutf_exit(arg);
     return NULL;
 }
 
 static void *test5(void *arg) {
-    printf("test5\n");
     if (arg != NULL) {
         printf("arg: %d\n", *(uint32_t *)arg);
     }
     // Do some calculations
-    for (size_t i = 0; i < CLOCKS_PER_SEC; i++) {
-        ;
+    // for (size_t i = 0; i < CLOCKS_PER_SEC; i++) {
+    while (1) {
+        printf("test5\n");
     }
     lutf_exit(arg);
     return NULL;
@@ -92,7 +94,7 @@ static int _detach_exit_wait(void) {
 
 // 百万级测试
 static int _million(void) {
-#define COUNT 2000
+#define COUNT 50
     lutf_thread_t *threads =
         (lutf_thread_t *)malloc(COUNT * sizeof(lutf_thread_t));
     uint32_t *arg = (uint32_t *)malloc(COUNT * sizeof(uint32_t));
@@ -102,16 +104,13 @@ static int _million(void) {
     for (size_t i = 0; i < COUNT / 2; i++) {
         assert(lutf_create(&threads[i], test4, (void *)&arg[i]) == 0);
     }
-    for (size_t i = 0; i < COUNT / 2; i++) {
-        lutf_detach(&threads[i]);
-    }
     for (size_t i = COUNT / 2; i < COUNT; i++) {
         assert(lutf_create(&threads[i], test5, (void *)&arg[i]) == 0);
     }
-    for (size_t i = COUNT / 2; i < COUNT; i++) {
+    for (size_t i = 0; i < COUNT; i++) {
         lutf_detach(&threads[i]);
-        lutf_wait(&threads[i], 1);
     }
+    lutf_wait(threads, COUNT);
     return 0;
 }
 
