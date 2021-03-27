@@ -316,6 +316,7 @@ __attribute__((constructor)) static int init(void) {
     thread_main->wait = NULL;
     // 优先级默认高
     thread_main->prior       = HIGH;
+    thread_main->method      = TIME;
     thread_main->resume_time = 0;
     // 更新全局信息
     env.nid         = 1;
