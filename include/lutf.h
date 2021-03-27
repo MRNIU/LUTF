@@ -94,8 +94,8 @@ typedef struct lutf_entry {
 
 // semaphore
 typedef struct lutf_S {
-    long            s;
-    long            size;
+    ssize_t         s;
+    ssize_t         size;
     lutf_thread_t **queue;
 } lutf_S_t;
 

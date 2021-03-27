@@ -187,14 +187,14 @@ static inline int list_remove_entry(lutf_entry_t **list, lutf_entry_t *entry) {
     return 0;
 }
 
-#define TICK(x)                                                                \
+#define SIGUNBLOCK()                                                           \
     do {                                                                       \
-        assert(setitimer(ITIMER_VIRTUAL, x, NULL) == 0);                       \
+        assert(sigprocmask(SIG_UNBLOCK, &sig_act.sa_mask, NULL) == 0);         \
     } while (0)
 
-#define UNTICK()                                                               \
+#define SIGBLOCK()                                                             \
     do {                                                                       \
-        assert(setitimer(ITIMER_VIRTUAL, &tick_cancel, NULL) == 0);            \
+        assert(sigprocmask(SIG_BLOCK, &sig_act.sa_mask, NULL) == 0);           \
     } while (0)
 
 static int wait_(void) {
@@ -222,18 +222,15 @@ static inline int set_itimer(lutf_prior_t p) {
             break;
         }
         case LOW: {
-            // 开启 timer
-            TICK(&tick_low);
+            assert(setitimer(ITIMER_VIRTUAL, itimer[LOW], NULL) == 0);
             break;
         }
         case MID: {
-            // 开启 timer
-            TICK(&tick_mid);
+            assert(setitimer(ITIMER_VIRTUAL, itimer[MID], NULL) == 0);
             break;
         }
         case HIGH: {
-            // 开启 timer
-            TICK(&tick_high);
+            assert(setitimer(ITIMER_VIRTUAL, itimer[HIGH], NULL) == 0);
             break;
         }
     }
@@ -287,7 +284,8 @@ static void sched(int signo __attribute__((unused))) {
             ;
         }
         if (env.curr_thread->method == TIME) {
-            TICK(itimer[env.curr_thread->prior]);
+            assert(setitimer(ITIMER_VIRTUAL, itimer[env.curr_thread->prior],
+                             NULL) == 0);
         }
         siglongjmp(env.curr_thread->context, 1);
     }
@@ -329,7 +327,7 @@ __attribute__((constructor)) static int init(void) {
     sigaddset(&sig_act.sa_mask, SIGVTALRM);
     // 注册信号捕捉函数。
     sigaction(SIGVTALRM, &sig_act, NULL);
-    TICK(itimer[HIGH]);
+    assert(setitimer(ITIMER_VIRTUAL, itimer[HIGH], NULL) == 0);
     return 0;
 }
 
@@ -338,12 +336,11 @@ __attribute__((constructor)) static int init(void) {
 __attribute__((destructor)) static int finit(void) {
     // 还原使用的资源
     // 取消时钟
-    UNTICK();
+    SIGBLOCK();
     // 恢复之前的系统默认信号和默认信号处理。
     // 将 SIGVTALRM 重置为默认
     sig_act.sa_handler = SIG_DFL;
-    sigemptyset(&sig_act.sa_mask);
-    sig_act.sa_flags = SA_RESETHAND;
+    sig_act.sa_flags   = SA_RESETHAND;
     sigaction(SIGVTALRM, &sig_act, 0);
     // 如果还有线程没有退出
     lutf_thread_t *p = env.main_thread->next;
@@ -476,24 +473,24 @@ int lutf_detach(lutf_thread_t *thread) {
 }
 
 int lutf_wait(lutf_thread_t *threads, size_t size) {
-    UNTICK();
+    SIGBLOCK();
     env.curr_thread->status = lutf_WAIT;
     for (size_t i = 0; i < size; i++) {
         // 将新进程添加到当前进程的等待链表
         list_append(&env.curr_thread->wait, &threads[i]);
     }
+    SIGUNBLOCK();
     raise(SIGVTALRM);
     return 0;
 }
 
 int lutf_exit(void *value) {
-    if (env.curr_thread->method == TIME) {
-        UNTICK();
-    }
+    SIGBLOCK();
     assert(env.curr_thread != env.main_thread);
     env.curr_thread->exit_value = value;
     env.curr_thread->status     = lutf_EXIT;
     if (env.curr_thread->method == TIME) {
+        SIGUNBLOCK();
         raise(SIGVTALRM);
     }
     return 0;
@@ -535,7 +532,7 @@ lutf_S_t *lutf_createS(int ss) {
 int lutf_P(lutf_S_t *s) {
     if (s->s > 0) {
         s->s -= 1;
-        UNTICK();
+        SIGBLOCK();
     }
     else {
         s->s -= 1;
@@ -545,6 +542,7 @@ int lutf_P(lutf_S_t *s) {
         }
         env.curr_thread->status  = lutf_SEM;
         s->queue[labs(s->s) - 1] = env.curr_thread;
+        SIGUNBLOCK();
         raise(SIGVTALRM);
     }
     return 0;
@@ -558,7 +556,7 @@ int lutf_V(lutf_S_t *s) {
         s->s += 1;
         s->queue[labs(s->s)]->status = lutf_RUNNING;
     }
-    UNTICK();
+    SIGBLOCK();
     return 0;
 }
 
