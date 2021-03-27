@@ -341,6 +341,7 @@ __attribute__((destructor)) static int finit(void) {
     // 将 SIGVTALRM 重置为默认
     sig_act.sa_handler = SIG_DFL;
     sig_act.sa_flags   = SA_RESETHAND;
+    sigdelset(&sig_act.sa_mask, SIGVTALRM);
     sigaction(SIGVTALRM, &sig_act, 0);
     // 如果还有线程没有退出
     lutf_thread_t *p = env.main_thread->next;
