@@ -50,6 +50,12 @@ typedef void *(*lutf_fun_t)(void *);
 // thread id type
 typedef uint32_t lutf_task_id_t;
 
+// sched method
+typedef enum {
+    FIFO = 1,
+    TIME = 2,
+} lutf_sched_t;
+
 // thread
 typedef struct lutf_thread {
     // thread id
@@ -76,6 +82,8 @@ typedef struct lutf_thread {
     int prior;
     // resume time
     clock_t resume_time;
+    // sched
+    lutf_sched_t method;
 } lutf_thread_t;
 
 typedef struct lutf_entry {
@@ -91,18 +99,12 @@ typedef struct lutf_S {
     lutf_thread_t **queue;
 } lutf_S_t;
 
-// sched method
-typedef enum {
-    FIFO = 1,
-    TIME = 2,
-} lutf_sched_t;
-
 // prior
 typedef enum {
-    NONE = 0,
-    LOW  = 1,
-    MID  = 2,
-    HIGH = 3,
+    LOW  = 0,
+    MID  = 1,
+    HIGH = 2,
+    NONE = 3,
 } lutf_prior_t;
 
 // global val
@@ -110,7 +112,6 @@ typedef struct lutf_env {
     size_t         nid;
     lutf_thread_t *main_thread;
     lutf_thread_t *curr_thread;
-    lutf_sched_t   sched_method;
 } lutf_env_t;
 
 // set sched method

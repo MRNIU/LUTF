@@ -120,7 +120,6 @@ static int _million(void) {
 int fifo(void) {
     printf("--------FIFO--------\n");
     printf("In this mode, threads are execute sequentially.\n");
-    lutf_set_sched(FIFO);
     printf("----join_exit----\n");
     printf("Create a thread, run and output its return value.\n");
     printf("Functions used are: lutf_create, lutf_join, lutf_exit.\n");

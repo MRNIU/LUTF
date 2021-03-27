@@ -20,7 +20,7 @@ static void *test1(void *arg) {
     if (arg != NULL) {
         printf("arg: %s\n", (char *)arg);
     }
-    for (size_t i = 0; i < 10; i++) {
+    for (size_t i = 0; i < 5000; i++) {
         printf("test1");
     }
     lutf_exit((void *)"This is test1 exit value");
@@ -32,7 +32,7 @@ static void *test2(void *arg) {
         printf("arg: %s\n", (char *)arg);
     }
     // Do some calculations
-    for (size_t i = 0; i < 10; i++) {
+    for (size_t i = 0; i < 5000; i++) {
         printf("test2");
     }
     lutf_exit((void *)"This is test2 exit value");
@@ -43,7 +43,7 @@ static void *test3(void *arg) {
     if (arg != NULL) {
         printf("arg: %s\n", (char *)arg);
     }
-    for (size_t i = 0; i < 10; i++) {
+    for (size_t i = 0; i < 5000; i++) {
         printf("test3");
     }
     lutf_exit((void *)"This is test3 exit value");
@@ -66,13 +66,16 @@ static int _detach_exit_wait(void) {
     return 0;
 }
 
-#define N 20
-int          size    = N;
-int          current = 0;
-int          buffer[N];
+#define BUF_SIZE 100
+int buffer[BUF_SIZE];
+#define FEE 1000
+#define PROD 2
+#define CONS 4
+static int   current = 0;
 lutf_S_t *   empty;
 lutf_S_t *   full;
 lutf_S_t *   lock;
+static int   total_get = 0;
 static void *producter(void *arg) {
     int item;
     int i = 0;
@@ -85,7 +88,6 @@ static void *producter(void *arg) {
         current += 1;
         lutf_V(lock);
         lutf_V(full);
-        printf("product: %d: %d, size: %d\n", lutf_self()->id, item, current);
     }
     lutf_exit(NULL);
     return NULL;
@@ -93,34 +95,35 @@ static void *producter(void *arg) {
 
 static void *consumer(void *arg) {
     int item;
-    for (size_t i = 0; i < N; i++) {
+    for (size_t i = 0; i < FEE; i++) {
+        total_get++;
         lutf_P(full);
         lutf_P(lock);
         current -= 1;
         item = buffer[current];
         lutf_V(lock);
         lutf_V(empty);
-        printf("consume: %d: %d, size: %d\n", lutf_self()->id, item, current);
     }
     lutf_exit(NULL);
     return NULL;
 }
 
 static int _sync(void) {
-    lutf_thread_t *p = (lutf_thread_t *)malloc(2 * sizeof(lutf_thread_t));
-    lutf_thread_t *c = (lutf_thread_t *)malloc(4 * sizeof(lutf_thread_t));
-    empty            = lutf_createS(size);
+    lutf_thread_t *p = (lutf_thread_t *)malloc(PROD * sizeof(lutf_thread_t));
+    lutf_thread_t *c = (lutf_thread_t *)malloc(CONS * sizeof(lutf_thread_t));
+    empty            = lutf_createS(BUF_SIZE);
     full             = lutf_createS(0);
     lock             = lutf_createS(1);
-    for (size_t i = 0; i < 2; i++) {
+    for (size_t i = 0; i < PROD; i++) {
         assert(lutf_create(&p[i], producter, NULL) == 0);
         lutf_detach(&p[i]);
     }
-    for (size_t i = 0; i < 4; i++) {
+    for (size_t i = 0; i < CONS; i++) {
         assert(lutf_create(&c[i], consumer, NULL) == 0);
         lutf_detach(&c[i]);
     }
-    lutf_wait(c, 4);
+    lutf_wait(c, CONS);
+    assert(total_get == FEE * CONS);
     return 0;
 }
 
@@ -172,7 +175,6 @@ int time_(void) {
     printf("--------TIME--------\n");
     printf(
         "In this mode, threads will be scheduled based on time resources.\n");
-    lutf_set_sched(TIME);
     printf("----detach_exit_wait----\n");
     printf("Create a thread, run and output its return value.\n");
     printf("Functions used: lutf_create, lutf_detach, lutf_wait, lutf_exit.\n");
@@ -188,7 +190,7 @@ int time_(void) {
     printf("----million----\n");
     printf("Create a million threads, run and output its return value.\n");
     printf("Functions used are: lutf_create, lutf_detach, lutf_exit.\n");
-    // assert(_million() == 0);
+    assert(_million() == 0);
     printf("--------TIME END--------\n");
     return 0;
 }
