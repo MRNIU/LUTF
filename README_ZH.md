@@ -8,7 +8,6 @@ Linux 用户级任务调度框架。
 
 |                             接口                             |                          参数                          |                返回值                 |           功能           |
 | :----------------------------------------------------------: | :----------------------------------------------------: | :-----------------------------------: | :----------------------: |
-|           int lutf_set_sched(lutf_sched_t method)            |                    method: 调度方式                    |              成功返回 0               |       设置调度方式       |
 |  int lutf_set_prior(lutf_thread_t *thread, lutf_prior_t p)   |             thread: 要设置的线程;p: 优先级             |              成功返回 0               |        设置优先级        |
 | int lutf_create(lutf_thread_t *thread, lutf_fun_t fun, void *arg) | thread: 线程结构体; fun: 要执行的函数; arg: fun 的参数 |              成功返回 0               |         创建线程         |
 |       int lutf_join(lutf_thread_t *thread, void **ret)       |            thread: 线程结构体; ret: 返回值             |              成功返回 0               |     等待 thread 结束     |
@@ -51,11 +50,11 @@ make
 
 |              | OSX/x86_64 | OSX/ARM | LINUX/x86_64 | LINUX/ARM |
 | :----------: | :--------: | :-----: | :----------: | :-------: |
-|  GNU 7.3.0   |            |         |              |           |
-|  GNU 10.2.0  |            |         |              |           |
-| Clang 12.0.0 |            |         |              |           |
-|              |            |         |              |           |
-|              |            |         |              |           |
+|  GCC 7.3.0   |     /      |         |              |           |
+|  GCC 7.5.0   |     ✅      |         |              |           |
+|  GCC 9.3.0   |            |         |      ✅       |           |
+|  GCC 10.2.0  |     ✅      |         |              |           |
+| Clang 12.0.0 |     ✅      |         |              |           |
 
 基于 MacBook Pro (15-inch, 2017)  16G 测试
 

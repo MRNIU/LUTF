@@ -426,6 +426,7 @@ static int run(lutf_thread_t *thread, void **ret) {
     // 如果 setjmp 返回值不为 0，说明是从 thread 返回，
     // 这时 env->curr_thread 指向新的线程
     else {
+        // TODO: 栈方向处理
 #if defined(__i386__)
         __asm__("mov %0, %%esp"
                 :
@@ -494,8 +495,10 @@ int lutf_exit(void *value) {
 }
 
 int lutf_sleep(lutf_thread_t *thread, size_t sec) {
+    SIGBLOCK();
     thread->status      = lutf_SLEEP;
     thread->resume_time = clock() + sec * CLOCKS_PER_SEC;
+    SIGUNBLOCK();
     raise(SIGVTALRM);
     return 0;
 }

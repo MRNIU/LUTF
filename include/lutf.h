@@ -114,10 +114,6 @@ typedef struct lutf_env {
     lutf_thread_t *curr_thread;
 } lutf_env_t;
 
-// set sched method
-// method: method
-// return value: return 0 on success
-int lutf_set_sched(lutf_sched_t method);
 // set prior
 // thread: which thread
 // p: prior
