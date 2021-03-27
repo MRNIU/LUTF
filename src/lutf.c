@@ -326,8 +326,10 @@ __attribute__((constructor)) static int init(void) {
     sig_act.sa_handler = sched;
     sig_act.sa_flags   = 0;
     sigemptyset(&sig_act.sa_mask);
+    sigaddset(&sig_act.sa_mask, SIGVTALRM);
     // 注册信号捕捉函数。
     sigaction(SIGVTALRM, &sig_act, NULL);
+    TICK(itimer[HIGH]);
     return 0;
 }
 
@@ -448,11 +450,11 @@ static int run(lutf_thread_t *thread, void **ret) {
             *ret = env.curr_thread->exit_value;
         }
         env.curr_thread->status = lutf_EXIT;
-        if (env.curr_thread->method == TIME) {
-            raise(SIGVTALRM);
+        if (sigismember(&sig_act.sa_mask, SIGVTALRM) == 1) {
+            sched(SIGVTALRM);
         }
         else {
-            sched(SIGVTALRM);
+            raise(SIGVTALRM);
         }
     }
     return 0;
@@ -461,18 +463,15 @@ static int run(lutf_thread_t *thread, void **ret) {
 int lutf_join(lutf_thread_t *thread, void **ret) {
     assert(thread != NULL);
     thread->method = FIFO;
-    UNTICK();
-    return run(thread, ret);
+    sigprocmask(SIG_BLOCK, &sig_act.sa_mask, NULL);
+    run(thread, ret);
+    sigprocmask(SIG_UNBLOCK, &sig_act.sa_mask, NULL);
+    return 0;
 }
 
 int lutf_detach(lutf_thread_t *thread) {
     assert(thread != NULL);
     thread->method = TIME;
-    struct itimerval tmp;
-    getitimer(ITIMER_VIRTUAL, &tmp);
-    if (tmp.it_value.tv_usec == 0) {
-        TICK(itimer[thread->prior]);
-    }
     return run(thread, NULL);
 }
 
