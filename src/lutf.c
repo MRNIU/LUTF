@@ -447,12 +447,8 @@ static int run(lutf_thread_t *thread, void **ret) {
             *ret = env.curr_thread->exit_value;
         }
         env.curr_thread->status = lutf_EXIT;
-        if (sigismember(&sig_act.sa_mask, SIGVTALRM) == 1) {
-            sched(SIGVTALRM);
-        }
-        else {
-            raise(SIGVTALRM);
-        }
+        SIGUNBLOCK();
+        raise(SIGVTALRM);
     }
     return 0;
 }
@@ -460,9 +456,9 @@ static int run(lutf_thread_t *thread, void **ret) {
 int lutf_join(lutf_thread_t *thread, void **ret) {
     assert(thread != NULL);
     thread->method = FIFO;
-    sigprocmask(SIG_BLOCK, &sig_act.sa_mask, NULL);
+    SIGBLOCK();
     run(thread, ret);
-    sigprocmask(SIG_UNBLOCK, &sig_act.sa_mask, NULL);
+    SIGUNBLOCK();
     return 0;
 }
 
