@@ -20,10 +20,12 @@ extern "C" {
 // 代码编写的规范性
 // 测试用例完成度和覆盖程度
 
-// TODO: task id alloc
 #include "stdint.h"
 #include "sys/types.h"
 #include "setjmp.h"
+
+// TODO: 内存回收
+// TODO: 消除 lutf_set_sched 函数
 
 // do not less than lutf internal exec time, ms
 #define SLICE (128)
