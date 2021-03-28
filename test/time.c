@@ -16,7 +16,7 @@ extern "C" {
 #include "string.h"
 #include "lutf.h"
 
-#define C 2000000
+#define C 6400000
 static void *test1(void *arg) {
     if (arg != NULL) {
         printf("arg: %s\n", (char *)arg);
