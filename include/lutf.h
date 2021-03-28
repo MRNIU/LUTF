@@ -25,7 +25,9 @@ extern "C" {
 #include "setjmp.h"
 
 // TODO: 内存回收
-// TODO: 消除 lutf_set_sched 函数
+// TODO: 隐藏细节
+// 参考 pthread，线程类型使用指针，这样内存管理由 lutf 完成，细节也可以隐藏
+// 问题在于接口的转换
 
 // do not less than lutf internal exec time, ms
 #define SLICE (128)
@@ -56,7 +58,6 @@ typedef enum {
     TIME = 2,
 } lutf_sched_t;
 
-// TODO: 隐藏细节
 // thread
 typedef struct lutf_thread {
     // thread id
