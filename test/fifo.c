@@ -16,6 +16,7 @@ extern "C" {
 #include "string.h"
 #include "lutf.h"
 
+#define C 6400000
 static void *test1(void *arg) {
     printf("test1\n");
     if (arg != NULL) {
@@ -31,7 +32,7 @@ static void *test2(void *arg) {
         printf("arg: %s\n", (char *)arg);
     }
     // Do some calculations
-    for (size_t i = 0; i < CLOCKS_PER_SEC; i++) {
+    for (size_t i = 0; i < C; i++) {
         ;
     }
     lutf_exit((void *)"This is test2 exit value");
@@ -143,7 +144,7 @@ static void *test8(void *arg) {
         printf("arg: %d\n", *(uint32_t *)arg);
     }
     // Do some calculations
-    for (size_t i = 0; i < CLOCKS_PER_SEC; i++) {
+    for (size_t i = 0; i < C; i++) {
         ;
     }
     lutf_exit(arg);
@@ -168,7 +169,7 @@ static int _million(void) {
         lutf_join(&threads[i], &ret[i]);
         assert(*(uint32_t *)ret[i] == i);
     }
-    for (int i = 0; i < CLOCKS_PER_SEC; i++) {
+    for (int i = 0; i < C; i++) {
         ;
     }
     for (size_t i = COUNT / 2; i < COUNT; i++) {

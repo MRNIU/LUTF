@@ -140,7 +140,7 @@ static void *test4(void *arg) {
     if (arg != NULL) {
         printf("arg: %d\n", *(uint32_t *)arg);
     }
-    for (size_t i = 0; i < CLOCKS_PER_SEC; i++) {
+    for (size_t i = 0; i < C; i++) {
         if (i % 1000 == 0) {
             printf("test4");
         }
@@ -154,7 +154,7 @@ static void *test5(void *arg) {
         printf("arg: %d\n", *(uint32_t *)arg);
     }
     // Do some calculations
-    for (size_t i = 0; i < CLOCKS_PER_SEC; i++) {
+    for (size_t i = 0; i < C; i++) {
         if (i % 1000 == 0) {
             printf("test5");
         }
