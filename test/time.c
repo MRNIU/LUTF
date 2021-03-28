@@ -16,12 +16,15 @@ extern "C" {
 #include "string.h"
 #include "lutf.h"
 
+#define C 2000000
 static void *test1(void *arg) {
     if (arg != NULL) {
         printf("arg: %s\n", (char *)arg);
     }
-    for (size_t i = 0; i < 5000; i++) {
-        printf("test1");
+    for (size_t i = 0; i < C; i++) {
+        if (i % 1000 == 0) {
+            printf("test1");
+        }
     }
     lutf_exit((void *)"This is test1 exit value");
     return NULL;
@@ -32,8 +35,10 @@ static void *test2(void *arg) {
         printf("arg: %s\n", (char *)arg);
     }
     // Do some calculations
-    for (size_t i = 0; i < 5000; i++) {
-        printf("test2");
+    for (size_t i = 0; i < C; i++) {
+        if (i % 1000 == 0) {
+            printf("test2");
+        }
     }
     lutf_exit((void *)"This is test2 exit value");
     return NULL;
@@ -43,8 +48,10 @@ static void *test3(void *arg) {
     if (arg != NULL) {
         printf("arg: %s\n", (char *)arg);
     }
-    for (size_t i = 0; i < 5000; i++) {
-        printf("test3");
+    for (size_t i = 0; i < C; i++) {
+        if (i % 1000 == 0) {
+            printf("test3");
+        }
     }
     lutf_exit((void *)"This is test3 exit value");
     return NULL;
@@ -182,11 +189,11 @@ int time_(void) {
     printf("Functions used: lutf_create, lutf_detach, lutf_wait, lutf_exit.\n");
     assert(_detach_exit_wait() == 0);
     printf("----sync----\n");
-    assert(_sync() == 0);
+    // assert(_sync() == 0);
     printf("----million----\n");
     printf("Create a million threads, run and output its return value.\n");
     printf("Functions used are: lutf_create, lutf_detach, lutf_exit.\n");
-    assert(_million() == 0);
+    // assert(_million() == 0);
     printf("--------TIME END--------\n");
     return 0;
 }
