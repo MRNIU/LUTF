@@ -63,7 +63,6 @@ static int _detach_exit_wait(void) {
     lutf_detach(&threads[2]);
     // 等待退出
     lutf_wait(threads, 3);
-    free(threads);
     return 0;
 }
 
@@ -127,8 +126,6 @@ static int _sync(void) {
     }
     lutf_wait(c, CONS);
     assert(total_get == FEE * CONS);
-    free(p);
-    free(c);
     return 0;
 }
 
@@ -173,7 +170,6 @@ static int _million(void) {
         lutf_detach(&threads[i]);
     }
     lutf_wait(threads, COUNT);
-    free(threads);
     return 0;
 }
 

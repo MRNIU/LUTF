@@ -193,6 +193,7 @@ static inline int list_remove_entry(lutf_entry_t **list, lutf_entry_t *entry) {
 }
 
 static int wait_(void) {
+    printf("wait\n");
     // 等待等待队列中的线程完成
     int flag = 1;
     for (size_t i = 0; i < list_length(env.curr_thread->wait); i++) {
@@ -224,15 +225,12 @@ static void sched(int signo __attribute__((unused))) {
             switch (env.curr_thread->status) {
                 // 跳过
                 case lutf_READY: {
-                    printf("READY\n");
                     break;
                 }
                 case lutf_RUNNING: {
-                    printf("RUNNING\n");
                     break;
                 }
                 case lutf_WAIT: {
-                    printf("WAIT\n");
                     wait_();
                     break;
                 }
@@ -243,11 +241,10 @@ static void sched(int signo __attribute__((unused))) {
                     break;
                 }
                 case lutf_SEM: {
-                    printf("SEM\n");
                     break;
                 }
                 case lutf_EXIT: {
-                    printf("EXIT\n");
+                    printf("EXIT: %d\n", env.curr_thread->id);
                     free(env.curr_thread->stack);
                     env.curr_thread->stack = NULL;
                     list_free(env.curr_thread->wait);
@@ -497,7 +494,6 @@ lutf_S_t *lutf_createS(int ss) {
 }
 
 int lutf_P(lutf_S_t *s) {
-    printf("s: %d\n", s->s);
     if (s->s > 0) {
         s->s -= 1;
         SIGUNBLOCK();

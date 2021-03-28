@@ -61,7 +61,6 @@ static int _join_exit(void) {
     assert(strcmp("This is test2 exit value", (char *)ret[1]) == 0);
     lutf_join(&threads[2], &ret[2]);
     assert(strcmp("This is test3 exit value", (char *)ret[2]) == 0);
-    free(threads);
     return 0;
 }
 
@@ -82,7 +81,6 @@ static int _equal(void) {
     assert(lutf_equal(&threads[2], &threads[0]) == 0);
     assert(lutf_equal(&threads[2], &threads[1]) == 0);
     assert(lutf_equal(&threads[2], &threads[2]) == 1);
-    free(threads);
     return 0;
 }
 
@@ -127,7 +125,6 @@ static int _cancel_self(void) {
     lutf_join(&threads[0], NULL);
     lutf_join(&threads[1], NULL);
     lutf_join(&threads[2], NULL);
-    free(threads);
     return 0;
 }
 
@@ -181,7 +178,6 @@ static int _million(void) {
         lutf_join(&threads[i], &ret[i]);
         assert(*(uint32_t *)ret[i] == i);
     }
-    free(threads);
     return 0;
 }
 
