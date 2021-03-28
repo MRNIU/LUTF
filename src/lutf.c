@@ -213,7 +213,7 @@ static int wait_(void) {
 
 // 对周期处理的操作计数
 static size_t count = 0;
-
+// TODO: 结构体的回收
 static void sched(int signo __attribute__((unused))) {
     // TODO: 多次调度均运行 main 时，屏蔽 SIGVTALRM 信号
     count++;
