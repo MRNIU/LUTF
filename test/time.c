@@ -95,7 +95,7 @@ static void *producter(void *arg) {
         current += 1;
         lutf_V(lock);
         lutf_V(full);
-        printf("Thread %d: %d, curr: %d\n", lutf_self()->id, item, current);
+        printf("p %d: %d, curr: %d\n", lutf_self()->id, item, current);
     }
     lutf_exit(NULL);
     return NULL;
@@ -111,7 +111,7 @@ static void *consumer(void *arg) {
         item = buffer[current];
         lutf_V(lock);
         lutf_V(empty);
-        printf("Thread %d: %d, curr: %d\n", lutf_self()->id, item, current);
+        printf("c %d: %d, curr: %d\n", lutf_self()->id, item, current);
     }
     lutf_exit(NULL);
     return NULL;
@@ -141,7 +141,9 @@ static void *test4(void *arg) {
         printf("arg: %d\n", *(uint32_t *)arg);
     }
     for (size_t i = 0; i < CLOCKS_PER_SEC; i++) {
-        printf("test4");
+        if (i % 1000 == 0) {
+            printf("test4");
+        }
     }
     lutf_exit(arg);
     return NULL;
@@ -153,7 +155,9 @@ static void *test5(void *arg) {
     }
     // Do some calculations
     for (size_t i = 0; i < CLOCKS_PER_SEC; i++) {
-        printf("test5");
+        if (i % 1000 == 0) {
+            printf("test5");
+        }
     }
     lutf_exit(arg);
     return NULL;
@@ -189,11 +193,11 @@ int time_(void) {
     printf("Functions used: lutf_create, lutf_detach, lutf_wait, lutf_exit.\n");
     assert(_detach_exit_wait() == 0);
     printf("----sync----\n");
-    // assert(_sync() == 0);
+    assert(_sync() == 0);
     printf("----million----\n");
     printf("Create a million threads, run and output its return value.\n");
     printf("Functions used are: lutf_create, lutf_detach, lutf_exit.\n");
-    // assert(_million() == 0);
+    assert(_million() == 0);
     printf("--------TIME END--------\n");
     return 0;
 }
