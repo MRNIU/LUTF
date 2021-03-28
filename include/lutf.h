@@ -56,6 +56,7 @@ typedef enum {
     TIME = 2,
 } lutf_sched_t;
 
+// TODO: 隐藏细节
 // thread
 typedef struct lutf_thread {
     // thread id

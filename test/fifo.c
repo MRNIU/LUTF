@@ -47,28 +47,6 @@ static void *test3(void *arg) {
     return NULL;
 }
 
-static void *test4(void *arg) {
-    printf("test4\n");
-    if (arg != NULL) {
-        printf("arg: %d\n", *(uint32_t *)arg);
-    }
-    lutf_exit(arg);
-    return NULL;
-}
-
-static void *test5(void *arg) {
-    printf("test5\n");
-    if (arg != NULL) {
-        printf("arg: %d\n", *(uint32_t *)arg);
-    }
-    // Do some calculations
-    for (size_t i = 0; i < CLOCKS_PER_SEC; i++) {
-        ;
-    }
-    lutf_exit(arg);
-    return NULL;
-}
-
 static int _join_exit(void) {
     lutf_thread_t *threads = (lutf_thread_t *)malloc(3 * sizeof(lutf_thread_t));
     char *         arg[3]  = {"This is test1 arg", "This is test2 arg",
@@ -83,7 +61,96 @@ static int _join_exit(void) {
     assert(strcmp("This is test2 exit value", (char *)ret[1]) == 0);
     lutf_join(&threads[2], &ret[2]);
     assert(strcmp("This is test3 exit value", (char *)ret[2]) == 0);
+    free(threads);
     return 0;
+}
+
+static int _equal(void) {
+    lutf_thread_t *threads = (lutf_thread_t *)malloc(3 * sizeof(lutf_thread_t));
+    assert(lutf_create(&threads[0], test1, NULL) == 0);
+    assert(lutf_create(&threads[1], test2, NULL) == 0);
+    assert(lutf_create(&threads[2], test3, NULL) == 0);
+    lutf_join(&threads[0], NULL);
+    lutf_join(&threads[1], NULL);
+    lutf_join(&threads[2], NULL);
+    assert(lutf_equal(&threads[0], &threads[0]) == 1);
+    assert(lutf_equal(&threads[0], &threads[1]) == 0);
+    assert(lutf_equal(&threads[0], &threads[2]) == 0);
+    assert(lutf_equal(&threads[1], &threads[0]) == 0);
+    assert(lutf_equal(&threads[1], &threads[1]) == 1);
+    assert(lutf_equal(&threads[1], &threads[2]) == 0);
+    assert(lutf_equal(&threads[2], &threads[0]) == 0);
+    assert(lutf_equal(&threads[2], &threads[1]) == 0);
+    assert(lutf_equal(&threads[2], &threads[2]) == 1);
+    free(threads);
+    return 0;
+}
+
+static void *test4(void *arg __attribute__((unused))) {
+    int index = 3;
+    while (1) {
+        if (--index == 0) {
+            lutf_cancel(lutf_self());
+        }
+    }
+    assert(1);
+    return NULL;
+}
+
+static void *test5(void *arg __attribute__((unused))) {
+    int index = 3;
+    while (1) {
+        if (--index == 0) {
+            lutf_cancel(lutf_self());
+        }
+    }
+    assert(1);
+    return NULL;
+}
+
+static void *test6(void *arg __attribute__((unused))) {
+    int index = 3;
+    while (1) {
+        if (--index == 0) {
+            lutf_cancel(lutf_self());
+        }
+    }
+    assert(1);
+    return NULL;
+}
+
+static int _cancel_self(void) {
+    lutf_thread_t *threads = (lutf_thread_t *)malloc(3 * sizeof(lutf_thread_t));
+    assert(lutf_create(&threads[0], test4, NULL) == 0);
+    assert(lutf_create(&threads[1], test5, NULL) == 0);
+    assert(lutf_create(&threads[2], test6, NULL) == 0);
+    lutf_join(&threads[0], NULL);
+    lutf_join(&threads[1], NULL);
+    lutf_join(&threads[2], NULL);
+    free(threads);
+    return 0;
+}
+
+static void *test7(void *arg) {
+    printf("test7\n");
+    if (arg != NULL) {
+        printf("arg: %d\n", *(uint32_t *)arg);
+    }
+    lutf_exit(arg);
+    return NULL;
+}
+
+static void *test8(void *arg) {
+    printf("test8\n");
+    if (arg != NULL) {
+        printf("arg: %d\n", *(uint32_t *)arg);
+    }
+    // Do some calculations
+    for (size_t i = 0; i < CLOCKS_PER_SEC; i++) {
+        ;
+    }
+    lutf_exit(arg);
+    return NULL;
 }
 
 // 百万级测试
@@ -98,7 +165,7 @@ static int _million(void) {
         ret[i] = NULL;
     }
     for (size_t i = 0; i < COUNT / 2; i++) {
-        assert(lutf_create(&threads[i], test4, (void *)&arg[i]) == 0);
+        assert(lutf_create(&threads[i], test7, (void *)&arg[i]) == 0);
     }
     for (size_t i = 0; i < COUNT / 2; i++) {
         lutf_join(&threads[i], &ret[i]);
@@ -108,12 +175,13 @@ static int _million(void) {
         ;
     }
     for (size_t i = COUNT / 2; i < COUNT; i++) {
-        assert(lutf_create(&threads[i], test5, (void *)&arg[i]) == 0);
+        assert(lutf_create(&threads[i], test8, (void *)&arg[i]) == 0);
     }
     for (size_t i = COUNT / 2; i < COUNT; i++) {
         lutf_join(&threads[i], &ret[i]);
         assert(*(uint32_t *)ret[i] == i);
     }
+    free(threads);
     return 0;
 }
 
@@ -124,6 +192,12 @@ int fifo(void) {
     printf("Create a thread, run and output its return value.\n");
     printf("Functions used are: lutf_create, lutf_join, lutf_exit.\n");
     assert(_join_exit() == 0);
+    printf("----equal----\n");
+    printf("Determine whether two threads are the same.\n");
+    assert(_equal() == 0);
+    printf("----cancel_self----\n");
+    printf("Cancel a thread itself\n");
+    assert(_cancel_self() == 0);
     printf("----million----\n");
     printf("Create a million threads, run and output its return value.\n");
     printf("Functions used are: lutf_create, lutf_join, lutf_exit.\n");

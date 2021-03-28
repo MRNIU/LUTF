@@ -16,17 +16,12 @@ extern "C" {
 #include "time.h"
 #include "lutf.h"
 
+// TODO: 剔除多余代码
+
 static lutf_env_t env = {
     .nid         = 0,
     .main_thread = NULL,
     .curr_thread = NULL,
-};
-
-struct itimerval tick_cancel = {
-    .it_interval.tv_sec  = 0,
-    .it_interval.tv_usec = 0,
-    .it_value.tv_sec     = 0,
-    .it_value.tv_usec    = 0,
 };
 
 struct itimerval tick_low = {
@@ -52,6 +47,16 @@ struct itimerval tick_high = {
 struct itimerval *itimer[3] = {&tick_low, &tick_mid, &tick_high};
 
 struct sigaction sig_act;
+
+#define SIGUNBLOCK()                                                           \
+    do {                                                                       \
+        assert(sigprocmask(SIG_UNBLOCK, &sig_act.sa_mask, NULL) == 0);         \
+    } while (0)
+
+#define SIGBLOCK()                                                             \
+    do {                                                                       \
+        assert(sigprocmask(SIG_BLOCK, &sig_act.sa_mask, NULL) == 0);           \
+    } while (0)
 
 static inline int list_free(lutf_entry_t *list) {
     lutf_entry_t *entry;
@@ -187,16 +192,6 @@ static inline int list_remove_entry(lutf_entry_t **list, lutf_entry_t *entry) {
     return 0;
 }
 
-#define SIGUNBLOCK()                                                           \
-    do {                                                                       \
-        assert(sigprocmask(SIG_UNBLOCK, &sig_act.sa_mask, NULL) == 0);         \
-    } while (0)
-
-#define SIGBLOCK()                                                             \
-    do {                                                                       \
-        assert(sigprocmask(SIG_BLOCK, &sig_act.sa_mask, NULL) == 0);           \
-    } while (0)
-
 static int wait_(void) {
     // 等待等待队列中的线程完成
     int flag = 1;
@@ -215,32 +210,11 @@ static int wait_(void) {
     return 0;
 }
 
-static inline int set_itimer(lutf_prior_t p) {
-    // 根据优先级调整运行时间
-    switch (p) {
-        case NONE: {
-            break;
-        }
-        case LOW: {
-            assert(setitimer(ITIMER_VIRTUAL, itimer[LOW], NULL) == 0);
-            break;
-        }
-        case MID: {
-            assert(setitimer(ITIMER_VIRTUAL, itimer[MID], NULL) == 0);
-            break;
-        }
-        case HIGH: {
-            assert(setitimer(ITIMER_VIRTUAL, itimer[HIGH], NULL) == 0);
-            break;
-        }
-    }
-    return 0;
-}
-
 // 对周期处理的操作计数
 static size_t count = 0;
 
 static void sched(int signo __attribute__((unused))) {
+    // TODO: 多次调度均运行 main 时，屏蔽 SIGVTALRM 信号
     count++;
     if (sigsetjmp(env.curr_thread->context, SIGVTALRM) == 0) {
         do {
@@ -250,12 +224,15 @@ static void sched(int signo __attribute__((unused))) {
             switch (env.curr_thread->status) {
                 // 跳过
                 case lutf_READY: {
+                    printf("READY\n");
                     break;
                 }
                 case lutf_RUNNING: {
+                    printf("RUNNING\n");
                     break;
                 }
                 case lutf_WAIT: {
+                    printf("WAIT\n");
                     wait_();
                     break;
                 }
@@ -266,9 +243,11 @@ static void sched(int signo __attribute__((unused))) {
                     break;
                 }
                 case lutf_SEM: {
+                    printf("SEM\n");
                     break;
                 }
                 case lutf_EXIT: {
+                    printf("EXIT\n");
                     free(env.curr_thread->stack);
                     env.curr_thread->stack = NULL;
                     list_free(env.curr_thread->wait);
@@ -278,8 +257,7 @@ static void sched(int signo __attribute__((unused))) {
             }
         } while (env.curr_thread->status != lutf_RUNNING);
         // TODO:
-        // 将退出状态的线程从链表中删除，同时标记等待其完成的线程
-        // 这一操作不能太频繁
+        // 将退出状态的线程从链表中删除，同时标记等待其完成的线程，这一操作不能太频繁
         if (count % 1000 == 0) {
             ;
         }
@@ -343,18 +321,6 @@ __attribute__((destructor)) static int finit(void) {
     sig_act.sa_flags   = SA_RESETHAND;
     sigdelset(&sig_act.sa_mask, SIGVTALRM);
     sigaction(SIGVTALRM, &sig_act, 0);
-    // 如果还有线程没有退出
-    lutf_thread_t *p = env.main_thread->next;
-    while (p != env.main_thread) {
-        if (p->status != lutf_EXIT) {
-            // 直接回收
-            p->exit_value = NULL;
-            p->status     = lutf_EXIT;
-            free(p->stack);
-            list_free(p->wait);
-        }
-        p = p->next;
-    }
     env.main_thread->status = lutf_EXIT;
     // 释放等待队列
     list_free(env.main_thread->wait);
@@ -460,13 +426,13 @@ int lutf_join(lutf_thread_t *thread, void **ret) {
     thread->method = FIFO;
     SIGBLOCK();
     run(thread, ret);
-    SIGUNBLOCK();
     return 0;
 }
 
 int lutf_detach(lutf_thread_t *thread) {
     assert(thread != NULL);
     thread->method = TIME;
+    SIGUNBLOCK();
     return run(thread, NULL);
 }
 
@@ -484,12 +450,13 @@ int lutf_wait(lutf_thread_t *threads, size_t size) {
 
 int lutf_exit(void *value) {
     SIGBLOCK();
-    assert(env.curr_thread != env.main_thread);
-    env.curr_thread->exit_value = value;
-    env.curr_thread->status     = lutf_EXIT;
-    if (env.curr_thread->method == TIME) {
-        SIGUNBLOCK();
-        raise(SIGVTALRM);
+    if (env.curr_thread != env.main_thread) {
+        env.curr_thread->exit_value = value;
+        env.curr_thread->status     = lutf_EXIT;
+        if (env.curr_thread->method == TIME) {
+            SIGUNBLOCK();
+            raise(SIGVTALRM);
+        }
     }
     return 0;
 }
@@ -508,15 +475,15 @@ lutf_thread_t *lutf_self(void) {
 }
 
 int lutf_equal(lutf_thread_t *thread1, lutf_thread_t *thread2) {
-    if (thread1->id != thread2->id) {
-        return 0;
-    }
-    return 1;
+    return (thread1->id == thread2->id) ? 1 : 0;
 }
 
 int lutf_cancel(lutf_thread_t *thread) {
-    lutf_exit(NULL);
-    raise(SIGVTALRM);
+    thread->status = lutf_EXIT;
+    if (env.curr_thread == thread) {
+        SIGUNBLOCK();
+        raise(SIGVTALRM);
+    }
     return 0;
 }
 
@@ -530,9 +497,10 @@ lutf_S_t *lutf_createS(int ss) {
 }
 
 int lutf_P(lutf_S_t *s) {
+    printf("s: %d\n", s->s);
     if (s->s > 0) {
         s->s -= 1;
-        SIGBLOCK();
+        SIGUNBLOCK();
     }
     else {
         s->s -= 1;
@@ -542,13 +510,13 @@ int lutf_P(lutf_S_t *s) {
         }
         env.curr_thread->status  = lutf_SEM;
         s->queue[labs(s->s) - 1] = env.curr_thread;
-        SIGUNBLOCK();
         raise(SIGVTALRM);
     }
     return 0;
 }
 
 int lutf_V(lutf_S_t *s) {
+    SIGBLOCK();
     if (s->s >= 0) {
         s->s += 1;
     }
@@ -556,7 +524,7 @@ int lutf_V(lutf_S_t *s) {
         s->s += 1;
         s->queue[labs(s->s)]->status = lutf_RUNNING;
     }
-    SIGBLOCK();
+    SIGUNBLOCK();
     return 0;
 }
 

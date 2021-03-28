@@ -63,6 +63,7 @@ static int _detach_exit_wait(void) {
     lutf_detach(&threads[2]);
     // 等待退出
     lutf_wait(threads, 3);
+    free(threads);
     return 0;
 }
 
@@ -88,6 +89,7 @@ static void *producter(void *arg) {
         current += 1;
         lutf_V(lock);
         lutf_V(full);
+        printf("Thread %d: %d, curr: %d\n", lutf_self()->id, item, current);
     }
     lutf_exit(NULL);
     return NULL;
@@ -103,6 +105,7 @@ static void *consumer(void *arg) {
         item = buffer[current];
         lutf_V(lock);
         lutf_V(empty);
+        printf("Thread %d: %d, curr: %d\n", lutf_self()->id, item, current);
     }
     lutf_exit(NULL);
     return NULL;
@@ -124,6 +127,8 @@ static int _sync(void) {
     }
     lutf_wait(c, CONS);
     assert(total_get == FEE * CONS);
+    free(p);
+    free(c);
     return 0;
 }
 
@@ -168,6 +173,7 @@ static int _million(void) {
         lutf_detach(&threads[i]);
     }
     lutf_wait(threads, COUNT);
+    free(threads);
     return 0;
 }
 
@@ -179,12 +185,6 @@ int time_(void) {
     printf("Create a thread, run and output its return value.\n");
     printf("Functions used: lutf_create, lutf_detach, lutf_wait, lutf_exit.\n");
     assert(_detach_exit_wait() == 0);
-    // printf("----self----\n");
-    // assert(_self() == 0);
-    // printf("----equal----\n");
-    // assert(_equal() == 0);
-    // printf("----cancel----\n");
-    // assert(_cancel() == 0);
     printf("----sync----\n");
     assert(_sync() == 0);
     printf("----million----\n");
