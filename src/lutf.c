@@ -168,7 +168,9 @@ static void   sched(int signo __attribute__((unused))) {
                 }
                 case lutf_EXIT: {
                     free(env.curr_thread->stack);
-                    env.curr_thread->stack = NULL;
+                    env.curr_thread->stack      = NULL;
+                    env.curr_thread->prev->next = env.curr_thread->next;
+                    env.curr_thread->next->prev = env.curr_thread->prev;
                     // env.curr_thread->wait.prev->wait.next =
                     //     env.curr_thread->wait.next;
                     // env.curr_thread->wait.next->wait.prev =
