@@ -85,17 +85,15 @@ lutf_S_t *   lock;
 static int   total_get = 0;
 static void *producter(void *arg __attribute__((unused))) {
     int item;
-    int i = 0;
-    while (1) {
+    for (size_t i = 0; i < FEE * 2; i++) {
         item = i;
-        i++;
         lutf_P(empty);
         lutf_P(lock);
         buffer[current] = item;
         current += 1;
         lutf_V(lock);
         lutf_V(full);
-        // printf("p %p: %d, curr: %d\n", lutf_self(), item, current);
+        printf("p %p: %d, curr: %d\n", lutf_self(), item, current);
     }
     lutf_exit(NULL);
     return NULL;
@@ -111,7 +109,7 @@ static void *consumer(void *arg __attribute__((unused))) {
         item = buffer[current];
         lutf_V(lock);
         lutf_V(empty);
-        // printf("c %p: %d, curr: %d\n", lutf_self(), item, current);
+        printf("c %p: %d, curr: %d\n", lutf_self(), item, current);
     }
     lutf_exit(NULL);
     return NULL;
@@ -185,11 +183,12 @@ static int _million(void) {
 
 int time_(void) {
     printf("--------TIME--------\n");
-    printf(
-        "In this mode, threads will be scheduled based on time resources.\n");
+    printf("In this mode, threads will be scheduled based on time "
+           "resources.\n");
     printf("----detach_exit_wait----\n");
     printf("Create a thread, run and output its return value.\n");
-    printf("Functions used: lutf_create, lutf_detach, lutf_wait, lutf_exit.\n");
+    printf("Functions used: lutf_create, lutf_detach, lutf_wait, "
+           "lutf_exit.\n");
     assert(_detach_exit_wait() == 0);
     printf("----sync----\n");
     assert(_sync() == 0);

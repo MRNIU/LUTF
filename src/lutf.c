@@ -37,9 +37,10 @@ typedef enum {
 // thread id type
 typedef ssize_t lutf_task_id_t;
 
-typedef struct {
-    struct lutf_thread *prev;
-    struct lutf_thread *next;
+typedef struct waitt {
+    struct lutf_thread *thread;
+    struct waitt *      prev;
+    struct waitt *      next;
 } wait_t;
 
 // thread
@@ -63,7 +64,8 @@ typedef struct lutf_thread {
     // next thread
     struct lutf_thread *next;
     // wait list
-    wait_t wait;
+    wait_t *wait;
+    size_t  wait_count;
     // prior
     lutf_prior_t prior;
     // resume time
@@ -120,16 +122,47 @@ struct sigaction sig_act;
     } while (0)
 
 static int wait_(void) {
-    int            flag = 1;
-    lutf_thread_t *tmp  = env.curr_thread->wait.next;
-    while (tmp != env.curr_thread) {
-        if (tmp->status != lutf_EXIT) {
+    int flag = 1;
+    // printf("[%d: %d]", env.curr_thread->wait->next->thread->id,
+    //        env.curr_thread->wait->next->thread->status);
+    wait_t *tmp = env.curr_thread->wait;
+
+    do {
+        if (env.curr_thread->wait_count == 1) {
+            printf("111111\n");
+        }
+        tmp = tmp->prev;
+        printf("thread: %d, curr: %d, %d\n", tmp->thread->id,
+               env.curr_thread->id, tmp->thread->status);
+        printf("1-\n");
+        if (tmp->thread->status == lutf_EXIT) {
+            continue;
+        }
+        else {
+            if (tmp->thread->id == 0) {
+                // flag = 0;
+                printf("1\n");
+                // break;
+                continue;
+            }
             flag = 0;
             break;
         }
-        tmp = tmp->wait.next;
+
+    } while (tmp->thread->id != 0);
+
+    while (1) {
+        if (tmp->thread->status == lutf_EXIT) {
+            continue;
+        }
+        else {
+            flag = 0;
+            break;
+        }
     }
+
     if (flag == 1) {
+        printf("2\n");
         env.curr_thread->status = lutf_RUNNING;
     }
     return 0;
@@ -141,7 +174,9 @@ static void   sched(int signo __attribute__((unused))) {
     // TODO: 多次调度均运行 main 时，屏蔽 SIGVTALRM 信号
     count++;
     if (sigsetjmp(env.curr_thread->context, SIGVTALRM) == 0) {
+        // BUG: 运行时有可能陷入死循环，main_thread 被修改为 READY
         do {
+            // printf("<%d: %d>", env.curr_thread->id, env.curr_thread->status);
             // 切换到下个线程
             env.curr_thread = env.curr_thread->next;
             // 根据状态
@@ -168,9 +203,9 @@ static void   sched(int signo __attribute__((unused))) {
                 }
                 case lutf_EXIT: {
                     free(env.curr_thread->stack);
-                    env.curr_thread->stack      = NULL;
-                    env.curr_thread->prev->next = env.curr_thread->next;
-                    env.curr_thread->next->prev = env.curr_thread->prev;
+                    env.curr_thread->stack = NULL;
+                    // env.curr_thread->prev->next = env.curr_thread->next;
+                    // env.curr_thread->next->prev = env.curr_thread->prev;
                     // env.curr_thread->wait.prev->wait.next =
                     //     env.curr_thread->wait.next;
                     // env.curr_thread->wait.next->wait.prev =
@@ -210,10 +245,13 @@ __attribute__((constructor)) static int init(void) {
     // 返回值默认为空
     thread_main->exit_value = NULL;
     // 初始化链表
-    thread_main->prev      = thread_main;
-    thread_main->next      = thread_main;
-    thread_main->wait.prev = thread_main;
-    thread_main->wait.next = thread_main;
+    thread_main->prev         = thread_main;
+    thread_main->next         = thread_main;
+    thread_main->wait         = (wait_t *)malloc(sizeof(wait_t));
+    thread_main->wait->thread = thread_main;
+    thread_main->wait->prev   = thread_main->wait;
+    thread_main->wait->next   = thread_main->wait;
+    thread_main->wait_count   = 1;
     // 优先级默认高
     thread_main->prior       = HIGH;
     thread_main->method      = TIME;
@@ -273,13 +311,16 @@ int lutf_create(lutf_t *t, lutf_fun_t fun, void *arg) {
     // 参数
     thread->arg = arg;
     // 退出值
-    thread->exit_value  = NULL;
-    thread->prev        = thread;
-    thread->next        = thread;
-    thread->wait.prev   = thread;
-    thread->wait.next   = thread;
-    thread->prior       = MID;
-    thread->resume_time = 0;
+    thread->exit_value   = NULL;
+    thread->prev         = thread;
+    thread->next         = thread;
+    thread->wait         = (wait_t *)malloc(sizeof(wait_t));
+    thread->wait->thread = thread;
+    thread->wait->prev   = thread->wait;
+    thread->wait->next   = thread->wait;
+    thread->wait_count   = 1;
+    thread->prior        = MID;
+    thread->resume_time  = 0;
     return 0;
 }
 
@@ -300,14 +341,16 @@ static int add_list(lutf_thread_t *thread) {
 }
 
 static int add_wait_list(lutf_thread_t *thread) {
-    lutf_thread_t *prev      = env.main_thread->wait.prev;
-    lutf_thread_t *next      = env.main_thread;
-    lutf_thread_t *new_entry = thread;
+    wait_t *new_entry = (wait_t *)malloc(sizeof(wait_t));
+    new_entry->prev   = new_entry;
+    new_entry->next   = new_entry;
+    new_entry->thread = thread;
 
-    prev->wait.next      = new_entry;
-    next->wait.prev      = new_entry;
-    new_entry->wait.prev = prev;
-    new_entry->wait.next = next;
+    new_entry->next                   = env.curr_thread->wait;
+    new_entry->prev                   = env.curr_thread->wait->prev;
+    env.curr_thread->wait->next->prev = new_entry;
+    env.curr_thread->wait->prev->next = new_entry;
+    env.curr_thread->wait_count++;
     return 0;
 }
 
@@ -376,6 +419,8 @@ int lutf_detach(lutf_t *t) {
 }
 
 int lutf_wait(lutf_t *t, size_t size) {
+    assert(t != NULL);
+    assert(size != 0);
     lutf_thread_t *threads = *t;
     SIGBLOCK();
     env.curr_thread->status = lutf_WAIT;
