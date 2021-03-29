@@ -71,15 +71,12 @@ static int _detach_exit_wait(void) {
     // 等待退出
     lutf_wait(threads, 3);
 
-    lutf_thread_t *thread1 = threads[0];
-    lutf_thread_t *thread2 = threads[1];
-    lutf_thread_t *thread3 = threads[2];
-    lutf_thread_t *thread4 = lutf_self();
-    printf("1: %d\n", thread1->status);
-    printf("self %d: %d\n", thread4->id, thread4->status);
-    assert(thread1->status == lutf_EXIT);
-    assert(thread2->status == lutf_EXIT);
-    assert(thread3->status == lutf_EXIT);
+    // lutf_thread_t *thread1 = threads[0];
+    // lutf_thread_t *thread2 = threads[1];
+    // lutf_thread_t *thread3 = threads[2];
+    // assert(thread1->status == lutf_EXIT);
+    // assert(thread2->status == lutf_EXIT);
+    // assert(thread3->status == lutf_EXIT);
 
     printf("=================\n");
     return 0;

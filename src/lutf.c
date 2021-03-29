@@ -70,7 +70,7 @@ static int wait_(void) {
     while (tmp != env.curr_thread->wait) {
         if (tmp->thread->status == lutf_EXIT) {
             if (--tmp->thread->waited == 0) {
-                // 移除链表
+                // 移出链表
                 // 回收资源
             }
             if (--env.curr_thread->wait_count == 1) {
@@ -84,10 +84,8 @@ static int wait_(void) {
 }
 
 // 对周期处理的操作计数
-static size_t count = 0;
-static void   sched(int signo __attribute__((unused))) {
+static void sched(int signo __attribute__((unused))) {
     // TODO: 多次调度均运行 main 时，屏蔽 SIGVTALRM 信号
-    count++;
     if (sigsetjmp(env.curr_thread->context, SIGVTALRM) == 0) {
         do {
             // 切换到下个线程
@@ -192,8 +190,18 @@ __attribute__((destructor)) static int finit(void) {
     sig_act.sa_flags   = SA_RESETHAND;
     sigdelset(&sig_act.sa_mask, SIGVTALRM);
     sigaction(SIGVTALRM, &sig_act, 0);
+    lutf_thread_t *tmp = env.main_thread->next;
+    while (tmp != env.main_thread) {
+        if (tmp->status != lutf_EXIT) {
+            free(tmp->stack);
+            free(tmp->wait);
+            free(tmp);
+        }
+        tmp = tmp->next;
+    }
     env.main_thread->status = lutf_EXIT;
     // 释放 main 信息占用空间
+    free(env.main_thread->wait);
     free(env.main_thread);
     return 0;
 }
@@ -309,8 +317,7 @@ static int run(lutf_thread_t *thread, void **ret) {
             *ret = env.curr_thread->exit_value;
         }
         env.curr_thread->status = lutf_EXIT;
-        SIGUNBLOCK();
-        raise(SIGVTALRM);
+        sched(SIGVTALRM);
     }
     return 0;
 }
@@ -342,8 +349,7 @@ int lutf_wait(lutf_t *t, size_t size) {
         add_wait_list(&threads[i]);
         threads[i].waited++;
     }
-    SIGUNBLOCK();
-    raise(SIGVTALRM);
+    sched(SIGVTALRM);
     return 0;
 }
 
