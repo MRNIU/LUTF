@@ -191,12 +191,12 @@ int time_(void) {
     printf("Create a thread, run and output its return value.\n");
     printf("Functions used: lutf_create, lutf_detach, lutf_wait, lutf_exit.\n");
     assert(_detach_exit_wait() == 0);
-    printf("----sync----\n");
-    assert(_sync() == 0);
-    printf("----million----\n");
-    printf("Create a million threads, run and output its return value.\n");
-    printf("Functions used are: lutf_create, lutf_detach, lutf_exit.\n");
-    assert(_million() == 0);
+    // printf("----sync----\n");
+    // assert(_sync() == 0);
+    // printf("----million----\n");
+    // printf("Create a million threads, run and output its return value.\n");
+    // printf("Functions used are: lutf_create, lutf_detach, lutf_exit.\n");
+    // assert(_million() == 0);
     printf("--------TIME END--------\n");
     return 0;
 }

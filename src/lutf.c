@@ -255,14 +255,22 @@ static inline int list_remove_entry(lutf_entry_t **list, lutf_entry_t *entry) {
 }
 
 static int wait_(void) {
-    printf("wait\n");
+    printf("wait: %d\n", env.curr_thread->id);
     // 等待等待队列中的线程完成
     int flag = 1;
     for (size_t i = 0; i < list_length(env.curr_thread->wait); i++) {
+        printf("id: %d, ", list_nth_data(env.curr_thread->wait, i)->id);
+        printf("status: %d\n", list_nth_data(env.curr_thread->wait, i)->status);
         if (list_nth_data(env.curr_thread->wait, i)->status == lutf_EXIT) {
+            printf("id1: %d, ", list_nth_data(env.curr_thread->wait, i)->id);
+            printf("status1: %d\n",
+                   list_nth_data(env.curr_thread->wait, i)->status);
             continue;
         }
         else {
+            printf("id2: %d, ", list_nth_data(env.curr_thread->wait, i)->id);
+            printf("status2: %d\n",
+                   list_nth_data(env.curr_thread->wait, i)->status);
             flag = 0;
             break;
         }
@@ -280,7 +288,9 @@ static void sched(int signo __attribute__((unused))) {
     // TODO: 多次调度均运行 main 时，屏蔽 SIGVTALRM 信号
     count++;
     if (sigsetjmp(env.curr_thread->context, SIGVTALRM) == 0) {
+        // BUG: 在测试中发现可能陷入死循环
         do {
+            printf("w");
             // 切换到下个线程
             env.curr_thread = env.curr_thread->next;
             // 根据状态
@@ -306,7 +316,7 @@ static void sched(int signo __attribute__((unused))) {
                     break;
                 }
                 case lutf_EXIT: {
-                    printf("EXIT: %d\n", env.curr_thread->id);
+                    // printf("EXIT: %d\n", env.curr_thread->id);
                     free(env.curr_thread->stack);
                     env.curr_thread->stack = NULL;
                     list_free(env.curr_thread->wait);
@@ -476,7 +486,9 @@ static int run(lutf_thread_t *thread, void **ret) {
         if (ret != NULL) {
             *ret = env.curr_thread->exit_value;
         }
+        printf("11111\n");
         env.curr_thread->status = lutf_EXIT;
+        printf("222\n");
         SIGUNBLOCK();
         raise(SIGVTALRM);
     }
@@ -485,18 +497,17 @@ static int run(lutf_thread_t *thread, void **ret) {
 
 int lutf_join(lutf_t *t, void **ret) {
     assert(t != NULL);
+    SIGBLOCK();
     lutf_thread_t *thread = *t;
     thread->method        = FIFO;
-    SIGBLOCK();
-    run(thread, ret);
-    return 0;
+    return run(thread, ret);
 }
 
 int lutf_detach(lutf_t *t) {
     assert(t != NULL);
+    SIGUNBLOCK();
     lutf_thread_t *thread = *t;
     thread->method        = TIME;
-    SIGUNBLOCK();
     return run(thread, NULL);
 }
 
