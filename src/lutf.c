@@ -18,62 +18,6 @@ extern "C" {
 
 // TODO: 剔除多余代码
 
-// thread status
-typedef enum lutf_status {
-    lutf_READY = 0,
-    lutf_RUNNING,
-    lutf_EXIT,
-    lutf_WAIT,
-    lutf_SEM,
-    lutf_SLEEP,
-} lutf_status_t;
-
-// sched method
-typedef enum {
-    FIFO = 1,
-    TIME = 2,
-} lutf_sched_t;
-
-// thread id type
-typedef ssize_t lutf_task_id_t;
-
-typedef struct waitt {
-    struct lutf_thread *thread;
-    struct waitt *      prev;
-    struct waitt *      next;
-} wait_t;
-
-// thread
-typedef struct lutf_thread {
-    // thread id
-    lutf_task_id_t id;
-    // thread status
-    lutf_status_t status;
-    // thread stack
-    char *stack;
-    // function
-    lutf_fun_t func;
-    // function parameter
-    void *arg;
-    // exit value
-    void *exit_value;
-    // jmp_buf
-    jmp_buf context;
-    // prev thread
-    struct lutf_thread *prev;
-    // next thread
-    struct lutf_thread *next;
-    // wait list
-    wait_t *wait;
-    size_t  wait_count;
-    // prior
-    lutf_prior_t prior;
-    // resume time
-    clock_t resume_time;
-    // sched
-    lutf_sched_t method;
-} lutf_thread_t;
-
 // global val
 typedef struct lutf_env {
     size_t         nid;
@@ -122,48 +66,19 @@ struct sigaction sig_act;
     } while (0)
 
 static int wait_(void) {
-    int flag = 1;
-    // printf("[%d: %d]", env.curr_thread->wait->next->thread->id,
-    //        env.curr_thread->wait->next->thread->status);
-    wait_t *tmp = env.curr_thread->wait;
-
-    do {
-        if (env.curr_thread->wait_count == 1) {
-            printf("111111\n");
-        }
-        tmp = tmp->prev;
-        printf("thread: %d, curr: %d, %d\n", tmp->thread->id,
-               env.curr_thread->id, tmp->thread->status);
-        printf("1-\n");
+    wait_t *tmp = env.curr_thread->wait->next;
+    while (tmp != env.curr_thread->wait) {
         if (tmp->thread->status == lutf_EXIT) {
-            continue;
-        }
-        else {
-            if (tmp->thread->id == 0) {
-                // flag = 0;
-                printf("1\n");
-                // break;
-                continue;
+            if (--tmp->thread->waited == 0) {
+                // 移除链表
+                // 回收资源
             }
-            flag = 0;
-            break;
+            if (--env.curr_thread->wait_count == 1) {
+                env.curr_thread->status = lutf_RUNNING;
+                break;
+            }
         }
-
-    } while (tmp->thread->id != 0);
-
-    while (1) {
-        if (tmp->thread->status == lutf_EXIT) {
-            continue;
-        }
-        else {
-            flag = 0;
-            break;
-        }
-    }
-
-    if (flag == 1) {
-        printf("2\n");
-        env.curr_thread->status = lutf_RUNNING;
+        tmp = tmp->next;
     }
     return 0;
 }
@@ -174,9 +89,7 @@ static void   sched(int signo __attribute__((unused))) {
     // TODO: 多次调度均运行 main 时，屏蔽 SIGVTALRM 信号
     count++;
     if (sigsetjmp(env.curr_thread->context, SIGVTALRM) == 0) {
-        // BUG: 运行时有可能陷入死循环，main_thread 被修改为 READY
         do {
-            // printf("<%d: %d>", env.curr_thread->id, env.curr_thread->status);
             // 切换到下个线程
             env.curr_thread = env.curr_thread->next;
             // 根据状态
@@ -214,11 +127,6 @@ static void   sched(int signo __attribute__((unused))) {
                 }
             }
         } while (env.curr_thread->status != lutf_RUNNING);
-        // TODO:
-        // 将退出状态的线程从链表中删除，同时标记等待其完成的线程，这一操作不能太频繁
-        if (count % 1000 == 0) {
-            ;
-        }
         if (env.curr_thread->method == TIME) {
             assert(setitimer(ITIMER_VIRTUAL, itimer[env.curr_thread->prior],
                              NULL) == 0);
@@ -252,6 +160,7 @@ __attribute__((constructor)) static int init(void) {
     thread_main->wait->prev   = thread_main->wait;
     thread_main->wait->next   = thread_main->wait;
     thread_main->wait_count   = 1;
+    thread_main->waited       = 0;
     // 优先级默认高
     thread_main->prior       = HIGH;
     thread_main->method      = TIME;
@@ -319,6 +228,7 @@ int lutf_create(lutf_t *t, lutf_fun_t fun, void *arg) {
     thread->wait->prev   = thread->wait;
     thread->wait->next   = thread->wait;
     thread->wait_count   = 1;
+    thread->waited       = 0;
     thread->prior        = MID;
     thread->resume_time  = 0;
     return 0;
@@ -341,15 +251,18 @@ static int add_list(lutf_thread_t *thread) {
 }
 
 static int add_wait_list(lutf_thread_t *thread) {
+    wait_t *prev      = env.main_thread->wait->prev;
+    wait_t *next      = env.main_thread->wait;
     wait_t *new_entry = (wait_t *)malloc(sizeof(wait_t));
     new_entry->prev   = new_entry;
     new_entry->next   = new_entry;
     new_entry->thread = thread;
 
-    new_entry->next                   = env.curr_thread->wait;
-    new_entry->prev                   = env.curr_thread->wait->prev;
-    env.curr_thread->wait->next->prev = new_entry;
-    env.curr_thread->wait->prev->next = new_entry;
+    prev->next      = new_entry;
+    next->prev      = new_entry;
+    new_entry->prev = prev;
+    new_entry->next = next;
+
     env.curr_thread->wait_count++;
     return 0;
 }
@@ -421,12 +334,13 @@ int lutf_detach(lutf_t *t) {
 int lutf_wait(lutf_t *t, size_t size) {
     assert(t != NULL);
     assert(size != 0);
-    lutf_thread_t *threads = *t;
     SIGBLOCK();
+    lutf_thread_t *threads  = *t;
     env.curr_thread->status = lutf_WAIT;
     for (size_t i = 0; i < size; i++) {
         // 将新进程添加到当前进程的等待链表
         add_wait_list(&threads[i]);
+        threads[i].waited++;
     }
     SIGUNBLOCK();
     raise(SIGVTALRM);

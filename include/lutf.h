@@ -54,6 +54,63 @@ typedef enum {
     NONE = 3,
 } lutf_prior_t;
 
+// thread status
+typedef enum lutf_status {
+    lutf_READY = 0,
+    lutf_RUNNING,
+    lutf_EXIT,
+    lutf_WAIT,
+    lutf_SEM,
+    lutf_SLEEP,
+} lutf_status_t;
+
+// sched method
+typedef enum {
+    FIFO = 1,
+    TIME = 2,
+} lutf_sched_t;
+
+// thread id type
+typedef ssize_t lutf_task_id_t;
+
+typedef struct waitt {
+    struct lutf_thread *thread;
+    struct waitt *      prev;
+    struct waitt *      next;
+} wait_t;
+
+// thread
+typedef struct lutf_thread {
+    // thread id
+    lutf_task_id_t id;
+    // thread status
+    lutf_status_t status;
+    // thread stack
+    char *stack;
+    // function
+    lutf_fun_t func;
+    // function parameter
+    void *arg;
+    // exit value
+    void *exit_value;
+    // jmp_buf
+    jmp_buf context;
+    // prev thread
+    struct lutf_thread *prev;
+    // next thread
+    struct lutf_thread *next;
+    // wait list
+    wait_t *wait;
+    size_t  wait_count;
+    size_t  waited;
+    // prior
+    lutf_prior_t prior;
+    // resume time
+    clock_t resume_time;
+    // sched
+    lutf_sched_t method;
+} lutf_thread_t;
+
 // set prior
 // thread: which thread
 // p: prior
