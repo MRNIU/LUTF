@@ -18,6 +18,68 @@ extern "C" {
 
 // TODO: 剔除多余代码
 
+// thread status
+typedef enum lutf_status {
+    lutf_READY = 0,
+    lutf_RUNNING,
+    lutf_EXIT,
+    lutf_WAIT,
+    lutf_SEM,
+    lutf_SLEEP,
+} lutf_status_t;
+
+// sched method
+typedef enum {
+    FIFO = 1,
+    TIME = 2,
+} lutf_sched_t;
+
+// thread id type
+typedef uint32_t lutf_task_id_t;
+
+// thread
+typedef struct lutf_thread {
+    // thread id
+    lutf_task_id_t id;
+    // thread status
+    lutf_status_t status;
+    // thread stack
+    char *stack;
+    // function
+    lutf_fun_t func;
+    // function parameter
+    void *arg;
+    // exit value
+    void *exit_value;
+    // jmp_buf
+    jmp_buf context;
+    // prev thread
+    struct lutf_thread *prev;
+    // next thread
+    struct lutf_thread *next;
+    // wait list
+    struct lutf_entry *wait;
+    // prior
+    int prior;
+    // resume time
+    clock_t resume_time;
+    // sched
+    lutf_sched_t method;
+} lutf_thread_t;
+
+typedef struct lutf_entry {
+    lutf_thread_t *    data;
+    struct lutf_entry *prev;
+    struct lutf_entry *next;
+} lutf_entry_t;
+
+// global val
+typedef struct lutf_env {
+    size_t         nid;
+    lutf_thread_t *main_thread;
+    lutf_thread_t *curr_thread;
+} lutf_env_t;
+
 static lutf_env_t env = {
     .nid         = 0,
     .main_thread = NULL,
@@ -326,14 +388,17 @@ __attribute__((destructor)) static int finit(void) {
     return 0;
 }
 
-int lutf_set_prior(lutf_thread_t *thread, lutf_prior_t p) {
-    thread->prior = p;
+int lutf_set_prior(lutf_t *t, lutf_prior_t p) {
+    lutf_thread_t *thread = *t;
+    thread->prior         = p;
     return 0;
 }
 
-int lutf_create(lutf_thread_t *thread, lutf_fun_t fun, void *arg) {
-    assert(thread != NULL);
+int lutf_create(lutf_t *t, lutf_fun_t fun, void *arg) {
+    assert(t != NULL);
     assert(fun != NULL);
+    *t                    = malloc(sizeof(lutf_thread_t));
+    lutf_thread_t *thread = *t;
     // id 默认为 -1
     thread->id = -1;
     // 设置为 READY
@@ -418,22 +483,25 @@ static int run(lutf_thread_t *thread, void **ret) {
     return 0;
 }
 
-int lutf_join(lutf_thread_t *thread, void **ret) {
-    assert(thread != NULL);
-    thread->method = FIFO;
+int lutf_join(lutf_t *t, void **ret) {
+    assert(t != NULL);
+    lutf_thread_t *thread = *t;
+    thread->method        = FIFO;
     SIGBLOCK();
     run(thread, ret);
     return 0;
 }
 
-int lutf_detach(lutf_thread_t *thread) {
-    assert(thread != NULL);
-    thread->method = TIME;
+int lutf_detach(lutf_t *t) {
+    assert(t != NULL);
+    lutf_thread_t *thread = *t;
+    thread->method        = TIME;
     SIGUNBLOCK();
     return run(thread, NULL);
 }
 
-int lutf_wait(lutf_thread_t *threads, size_t size) {
+int lutf_wait(lutf_t *t, size_t size) {
+    lutf_thread_t *threads = *t;
     SIGBLOCK();
     env.curr_thread->status = lutf_WAIT;
     for (size_t i = 0; i < size; i++) {
@@ -458,25 +526,29 @@ int lutf_exit(void *value) {
     return 0;
 }
 
-int lutf_sleep(lutf_thread_t *thread, size_t sec) {
+int lutf_sleep(lutf_t *t, size_t sec) {
     SIGBLOCK();
-    thread->status      = lutf_SLEEP;
-    thread->resume_time = clock() + sec * CLOCKS_PER_SEC;
+    lutf_thread_t *thread = *t;
+    thread->status        = lutf_SLEEP;
+    thread->resume_time   = clock() + sec * CLOCKS_PER_SEC;
     SIGUNBLOCK();
     raise(SIGVTALRM);
     return 0;
 }
 
-lutf_thread_t *lutf_self(void) {
-    return env.curr_thread;
+lutf_t lutf_self(void) {
+    return (lutf_t)env.curr_thread;
 }
 
-int lutf_equal(lutf_thread_t *thread1, lutf_thread_t *thread2) {
+int lutf_equal(lutf_t *t1, lutf_t *t2) {
+    lutf_thread_t *thread1 = *t1;
+    lutf_thread_t *thread2 = *t2;
     return (thread1->id == thread2->id) ? 1 : 0;
 }
 
-int lutf_cancel(lutf_thread_t *thread) {
-    thread->status = lutf_EXIT;
+int lutf_cancel(lutf_t *t) {
+    lutf_thread_t *thread = *t;
+    thread->status        = lutf_EXIT;
     if (env.curr_thread == thread) {
         SIGUNBLOCK();
         raise(SIGVTALRM);
@@ -505,7 +577,7 @@ int lutf_P(lutf_S_t *s) {
             s->queue = realloc(s->queue, sizeof(lutf_thread_t *) * s->size);
         }
         env.curr_thread->status  = lutf_SEM;
-        s->queue[labs(s->s) - 1] = env.curr_thread;
+        s->queue[labs(s->s) - 1] = (lutf_t *)env.curr_thread;
         raise(SIGVTALRM);
     }
     return 0;
@@ -518,7 +590,7 @@ int lutf_V(lutf_S_t *s) {
     }
     else {
         s->s += 1;
-        s->queue[labs(s->s)]->status = lutf_RUNNING;
+        ((lutf_thread_t *)s->queue[labs(s->s)])->status = lutf_RUNNING;
     }
     SIGUNBLOCK();
     return 0;

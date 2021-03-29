@@ -58,8 +58,8 @@ static void *test3(void *arg) {
 }
 
 static int _detach_exit_wait(void) {
-    lutf_thread_t *threads = (lutf_thread_t *)malloc(3 * sizeof(lutf_thread_t));
-    char *         arg[3]  = {"This is test1 arg", "This is test2 arg",
+    lutf_t *threads = malloc(3 * sizeof(lutf_t));
+    char *  arg[3]  = {"This is test1 arg", "This is test2 arg",
                     "This is test3 arg"};
     assert(lutf_create(&threads[0], test1, (void *)arg[0]) == 0);
     assert(lutf_create(&threads[1], test2, (void *)arg[1]) == 0);
@@ -83,7 +83,7 @@ lutf_S_t *   empty;
 lutf_S_t *   full;
 lutf_S_t *   lock;
 static int   total_get = 0;
-static void *producter(void *arg) {
+static void *producter(void *arg __attribute__((unused))) {
     int item;
     int i = 0;
     while (1) {
@@ -95,13 +95,13 @@ static void *producter(void *arg) {
         current += 1;
         lutf_V(lock);
         lutf_V(full);
-        printf("p %d: %d, curr: %d\n", lutf_self()->id, item, current);
+        printf("p %p: %d, curr: %d\n", lutf_self(), item, current);
     }
     lutf_exit(NULL);
     return NULL;
 }
 
-static void *consumer(void *arg) {
+static void *consumer(void *arg __attribute__((unused))) {
     int item;
     for (size_t i = 0; i < FEE; i++) {
         total_get++;
@@ -111,18 +111,18 @@ static void *consumer(void *arg) {
         item = buffer[current];
         lutf_V(lock);
         lutf_V(empty);
-        printf("c %d: %d, curr: %d\n", lutf_self()->id, item, current);
+        printf("p %p: %d, curr: %d\n", lutf_self(), item, current);
     }
     lutf_exit(NULL);
     return NULL;
 }
 
 static int _sync(void) {
-    lutf_thread_t *p = (lutf_thread_t *)malloc(PROD * sizeof(lutf_thread_t));
-    lutf_thread_t *c = (lutf_thread_t *)malloc(CONS * sizeof(lutf_thread_t));
-    empty            = lutf_createS(BUF_SIZE);
-    full             = lutf_createS(0);
-    lock             = lutf_createS(1);
+    lutf_t *p = malloc(PROD * sizeof(lutf_t));
+    lutf_t *c = malloc(CONS * sizeof(lutf_t));
+    empty     = lutf_createS(BUF_SIZE);
+    full      = lutf_createS(0);
+    lock      = lutf_createS(1);
     for (size_t i = 0; i < PROD; i++) {
         assert(lutf_create(&p[i], producter, NULL) == 0);
         lutf_detach(&p[i]);
@@ -165,9 +165,8 @@ static void *test5(void *arg) {
 
 static int _million(void) {
 #define COUNT 10
-    lutf_thread_t *threads =
-        (lutf_thread_t *)malloc(COUNT * sizeof(lutf_thread_t));
-    uint32_t *arg = (uint32_t *)malloc(COUNT * sizeof(uint32_t));
+    lutf_t *  threads = malloc(COUNT * sizeof(lutf_t));
+    uint32_t *arg     = (uint32_t *)malloc(COUNT * sizeof(uint32_t));
     for (size_t i = 0; i < COUNT; i++) {
         arg[i] = i;
     }

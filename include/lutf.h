@@ -25,10 +25,7 @@ extern "C" {
 #include "setjmp.h"
 
 // TODO: 内存回收
-// TODO: 隐藏细节
 // TODO: 优化 wait 处理
-// 参考 pthread，线程类型使用指针，这样内存管理由 lutf 完成，细节也可以隐藏
-// 问题在于接口的转换
 
 // do not less than lutf internal exec time, ms
 #define SLICE (128)
@@ -37,69 +34,16 @@ extern "C" {
 // semaphore size
 #define SEM_SIZE (1000)
 
-// thread status
-typedef enum lutf_status {
-    lutf_READY = 0,
-    lutf_RUNNING,
-    lutf_EXIT,
-    lutf_WAIT,
-    lutf_SEM,
-    lutf_SLEEP,
-} lutf_status_t;
-
 // thread fun type
 typedef void *(*lutf_fun_t)(void *);
 
-// thread id type
-typedef uint32_t lutf_task_id_t;
-
-// sched method
-typedef enum {
-    FIFO = 1,
-    TIME = 2,
-} lutf_sched_t;
-
-// thread
-typedef struct lutf_thread {
-    // thread id
-    lutf_task_id_t id;
-    // thread status
-    lutf_status_t status;
-    // thread stack
-    char *stack;
-    // function
-    lutf_fun_t func;
-    // function parameter
-    void *arg;
-    // exit value
-    void *exit_value;
-    // jmp_buf
-    jmp_buf context;
-    // prev thread
-    struct lutf_thread *prev;
-    // next thread
-    struct lutf_thread *next;
-    // wait list
-    struct lutf_entry *wait;
-    // prior
-    int prior;
-    // resume time
-    clock_t resume_time;
-    // sched
-    lutf_sched_t method;
-} lutf_thread_t;
-
-typedef struct lutf_entry {
-    lutf_thread_t *    data;
-    struct lutf_entry *prev;
-    struct lutf_entry *next;
-} lutf_entry_t;
+typedef void *lutf_t;
 
 // semaphore
 typedef struct lutf_S {
-    ssize_t         s;
-    ssize_t         size;
-    lutf_thread_t **queue;
+    ssize_t  s;
+    ssize_t  size;
+    lutf_t **queue;
 } lutf_S_t;
 
 // prior
@@ -110,38 +54,31 @@ typedef enum {
     NONE = 3,
 } lutf_prior_t;
 
-// global val
-typedef struct lutf_env {
-    size_t         nid;
-    lutf_thread_t *main_thread;
-    lutf_thread_t *curr_thread;
-} lutf_env_t;
-
 // set prior
 // thread: which thread
 // p: prior
 // return value: return 0 on success
-int lutf_set_prior(lutf_thread_t *thread, lutf_prior_t p);
+int lutf_set_prior(lutf_t *thread, lutf_prior_t p);
 // create a thread
 // thread: thread structure
 // fun: function will be exec
 // argv: fun's parameters
 // return value: return 0 on success
-int lutf_create(lutf_thread_t *thread, lutf_fun_t fun, void *arg);
+int lutf_create(lutf_t *thread, lutf_fun_t fun, void *arg);
 // block the current thread and wait thread finish
 // thread: which thread
 // ret: thread return val
 // return value: return 0 on success
-int lutf_join(lutf_thread_t *thread, void **ret);
+int lutf_join(lutf_t *thread, void **ret);
 // current thread exec concurrently with thread
 // thread: which thread to be concurrent
 // return value: return 0 on success
-int lutf_detach(lutf_thread_t *thread);
+int lutf_detach(lutf_t *thread);
 // wait thread array finish
 // threads: array of threads to wait
 // size: thread size
 // return value: return 0 on success
-int lutf_wait(lutf_thread_t *threads, size_t size);
+int lutf_wait(lutf_t *threads, size_t size);
 // exit a thread
 // value: exit val
 int lutf_exit(void *value);
@@ -149,17 +86,17 @@ int lutf_exit(void *value);
 // thread: thread to sleep
 // sec: sleep time, second
 // return value: return 0 on success
-int lutf_sleep(lutf_thread_t *thread, size_t sec);
+int lutf_sleep(lutf_t *thread, size_t sec);
 // get curr thread structure
 // return value: current thread structure
-lutf_thread_t *lutf_self(void);
+lutf_t lutf_self(void);
 // compare two threads if same
 // return value：return 1 same
-int lutf_equal(lutf_thread_t *thread1, lutf_thread_t *thread2);
+int lutf_equal(lutf_t *thread1, lutf_t *thread2);
 // cancel thread
 // thread: thread to cancel
 // return value: return 0 on success
-int lutf_cancel(lutf_thread_t *thread);
+int lutf_cancel(lutf_t *thread);
 // create semaphore
 lutf_S_t *lutf_createS(int ss);
 // P

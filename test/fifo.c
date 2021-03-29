@@ -49,10 +49,10 @@ static void *test3(void *arg) {
 }
 
 static int _join_exit(void) {
-    lutf_thread_t *threads = (lutf_thread_t *)malloc(3 * sizeof(lutf_thread_t));
-    char *         arg[3]  = {"This is test1 arg", "This is test2 arg",
+    lutf_t *threads = malloc(3 * sizeof(lutf_t));
+    char *  arg[3]  = {"This is test1 arg", "This is test2 arg",
                     "This is test3 arg"};
-    void **        ret     = malloc(3 * sizeof(char *));
+    void ** ret     = malloc(3 * sizeof(char *));
     assert(lutf_create(&threads[0], test1, (void *)arg[0]) == 0);
     assert(lutf_create(&threads[1], test2, (void *)arg[1]) == 0);
     assert(lutf_create(&threads[2], test3, (void *)arg[2]) == 0);
@@ -66,7 +66,7 @@ static int _join_exit(void) {
 }
 
 static int _equal(void) {
-    lutf_thread_t *threads = (lutf_thread_t *)malloc(3 * sizeof(lutf_thread_t));
+    lutf_t *threads = malloc(3 * sizeof(lutf_t));
     assert(lutf_create(&threads[0], test1, NULL) == 0);
     assert(lutf_create(&threads[1], test2, NULL) == 0);
     assert(lutf_create(&threads[2], test3, NULL) == 0);
@@ -89,7 +89,8 @@ static void *test4(void *arg __attribute__((unused))) {
     int index = 3;
     while (1) {
         if (--index == 0) {
-            lutf_cancel(lutf_self());
+            lutf_t r = lutf_self();
+            lutf_cancel(&r);
         }
     }
     assert(1);
@@ -100,7 +101,8 @@ static void *test5(void *arg __attribute__((unused))) {
     int index = 3;
     while (1) {
         if (--index == 0) {
-            lutf_cancel(lutf_self());
+            lutf_t r = lutf_self();
+            lutf_cancel(&r);
         }
     }
     assert(1);
@@ -111,7 +113,8 @@ static void *test6(void *arg __attribute__((unused))) {
     int index = 3;
     while (1) {
         if (--index == 0) {
-            lutf_cancel(lutf_self());
+            lutf_t r = lutf_self();
+            lutf_cancel(&r);
         }
     }
     assert(1);
@@ -119,7 +122,7 @@ static void *test6(void *arg __attribute__((unused))) {
 }
 
 static int _cancel_self(void) {
-    lutf_thread_t *threads = (lutf_thread_t *)malloc(3 * sizeof(lutf_thread_t));
+    lutf_t *threads = malloc(3 * sizeof(lutf_t));
     assert(lutf_create(&threads[0], test4, NULL) == 0);
     assert(lutf_create(&threads[1], test5, NULL) == 0);
     assert(lutf_create(&threads[2], test6, NULL) == 0);
@@ -154,10 +157,9 @@ static void *test8(void *arg) {
 // 百万级测试
 static int _million(void) {
 #define COUNT 16
-    lutf_thread_t *threads =
-        (lutf_thread_t *)malloc(COUNT * sizeof(lutf_thread_t));
-    void **   ret = malloc(COUNT * sizeof(uint32_t *));
-    uint32_t *arg = (uint32_t *)malloc(COUNT * sizeof(uint32_t));
+    lutf_t *  threads = malloc(COUNT * sizeof(lutf_t));
+    void **   ret     = malloc(COUNT * sizeof(uint32_t *));
+    uint32_t *arg     = (uint32_t *)malloc(COUNT * sizeof(uint32_t));
     for (size_t i = 0; i < COUNT; i++) {
         arg[i] = i;
         ret[i] = NULL;
