@@ -70,7 +70,7 @@ static int _detach_exit_wait(void) {
     lutf_detach(&threads[2]);
     // 等待退出
     lutf_wait(threads, 3);
-
+    // BUG: wait 失效，threads 在这里的状态是 RUNNING
     // lutf_thread_t *thread1 = threads[0];
     // lutf_thread_t *thread2 = threads[1];
     // lutf_thread_t *thread3 = threads[2];
