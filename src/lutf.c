@@ -121,7 +121,7 @@ static int wait_(void) {
             tmp->thread->waited--;
             // 等待-1
             env.curr_thread->wait_count--;
-            // printf("%d waited: %d\n", tmp->thread->id, tmp->thread->waited);
+            printf("%d waited: %d\n", tmp->thread->id, tmp->thread->waited);
             // 移出链表
             tmp->prev->next = tmp->next;
             tmp->next->prev = tmp->prev;
@@ -143,8 +143,8 @@ static void sched(int signo __attribute__((unused))) {
         do {
             // 切换到下个线程
             env.curr_thread = env.curr_thread->next;
-            // printf("(x%d, %d)\n", env.curr_thread->id,
-            // env.curr_thread->status); 根据状态
+            printf("(x%d, %d)\n", env.curr_thread->id, env.curr_thread->status);
+            // 根据状态
             switch (env.curr_thread->status) {
                 // 跳过
                 case lutf_READY: {
@@ -157,7 +157,7 @@ static void sched(int signo __attribute__((unused))) {
                     wait_();
                     if (env.curr_thread->wait_count == 1) {
                         env.curr_thread->status = lutf_RUNNING;
-                        // printf("11111111: %d\n", env.curr_thread->id);
+                        printf("11111111: %d\n", env.curr_thread->id);
                     }
                     break;
                 }
@@ -171,11 +171,11 @@ static void sched(int signo __attribute__((unused))) {
                     break;
                 }
                 case lutf_EXIT: {
-                    // printf("--------EXIT-------\n");
+                    printf("--------EXIT-------\n");
                     free(env.curr_thread->stack);
                     env.curr_thread->stack = NULL;
-                    // printf("(%d, %d)\n", env.curr_thread->id,
-                    //    env.curr_thread->waited);
+                    printf("(%d, %d)\n", env.curr_thread->id,
+                           env.curr_thread->waited);
                     if (env.curr_thread->waited == 0) {
                         // 从链表中删除
                         env.curr_thread->prev->next = env.curr_thread->next;
@@ -185,7 +185,7 @@ static void sched(int signo __attribute__((unused))) {
                         // lutf_t *t = env.curr_thread;
                         // *t        = NULL;
                         // printf("*t: %p\n", *t);
-                        // printf("free sched\n");
+                        printf("free sched\n");
                         free(env.curr_thread);
                         // 指针更新
                         env.curr_thread = tmp;
@@ -427,7 +427,7 @@ int lutf_exit(void *value) {
     SIGBLOCK();
     if (env.curr_thread != env.main_thread) {
         env.curr_thread->exit_value = value;
-        // printf("%d exit\n", env.curr_thread->id);
+        printf("%d exit\n", env.curr_thread->id);
         env.curr_thread->status = lutf_EXIT;
         sched(SIGVTALRM);
     }
