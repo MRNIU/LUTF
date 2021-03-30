@@ -160,8 +160,8 @@ static void sched(int signo __attribute__((unused))) {
         do {
             // 切换到下个线程
             env.curr_thread = env.curr_thread->next;
-            printf("(x%d, %d)\n", env.curr_thread->id, env.curr_thread->status);
-            // 根据状态
+            // printf("(x%d, %d)\n", env.curr_thread->id,
+            // env.curr_thread->status); 根据状态
             switch (env.curr_thread->status) {
                 // 跳过
                 case lutf_READY: {
