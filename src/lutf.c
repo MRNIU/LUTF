@@ -174,6 +174,10 @@ static void sched(int signo __attribute__((unused))) {
                         env.curr_thread->next->prev = env.curr_thread->prev;
                         lutf_thread_t *tmp          = env.curr_thread->prev;
                         // 回收资源
+                        lutf_t *t = env.curr_thread;
+                        *t        = NULL;
+                        // printf("*t: %p\n", *t);
+                        printf("free sched\n");
                         free(env.curr_thread);
                         // 指针更新
                         env.curr_thread = tmp;
@@ -448,6 +452,7 @@ lutf_status_t lutf_status(lutf_t *t) {
     assert(t != NULL);
     lutf_thread_t *thread = *t;
     if (thread == NULL) {
+        printf("NULL\n");
         return lutf_EXIT;
     }
     else {
