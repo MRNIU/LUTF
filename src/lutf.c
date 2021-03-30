@@ -117,7 +117,10 @@ static int wait_(void) {
     wait_t *tmp2 = tmp->prev;
     while (tmp != env.curr_thread->wait) {
         if (tmp->thread->status == lutf_EXIT) {
+            // 被等待-1
             tmp->thread->waited--;
+            // 等待-1
+            env.curr_thread->wait_count--;
             printf("%d waited: %d\n", tmp->thread->id, tmp->thread->waited);
             // 移出链表
             tmp->prev->next = tmp->next;
@@ -126,12 +129,6 @@ static int wait_(void) {
             free(tmp);
             // 指针更新
             tmp = tmp2;
-            // 被等待-1
-            if (--env.curr_thread->wait_count == 1) {
-                printf("1111111RUNNING\n");
-                env.curr_thread->status = lutf_RUNNING;
-                break;
-            }
         }
         tmp = tmp->next;
     }
@@ -141,7 +138,8 @@ static int wait_(void) {
 // 对周期处理的操作计数
 static void sched(int signo __attribute__((unused))) {
     // TODO: 多次调度均运行 main 时，屏蔽 SIGVTALRM 信号
-    if (sigsetjmp(env.curr_thread->context, SIGVTALRM) == 0) {
+    lutf_thread_t *tmp = env.curr_thread;
+    if (sigsetjmp(tmp->context, SIGVTALRM) == 0) {
         do {
             // 切换到下个线程
             env.curr_thread = env.curr_thread->next;
@@ -157,6 +155,10 @@ static void sched(int signo __attribute__((unused))) {
                 }
                 case lutf_WAIT: {
                     wait_();
+                    if (env.curr_thread->wait_count == 1) {
+                        env.curr_thread->status = lutf_RUNNING;
+                        printf("11111111: %d\n", env.curr_thread->id);
+                    }
                     break;
                 }
                 case lutf_SLEEP: {
@@ -467,9 +469,12 @@ lutf_status_t lutf_status(lutf_t *t) {
 }
 
 int lutf_cancel(lutf_t *t) {
+    assert(t != NULL);
+    SIGBLOCK();
     lutf_thread_t *thread = *t;
-    thread->status        = lutf_EXIT;
-    if (env.curr_thread == thread) {
+    if (env.curr_thread != env.main_thread) {
+        env.curr_thread->exit_value = NULL;
+        env.curr_thread->status     = lutf_EXIT;
         sched(SIGVTALRM);
     }
     return 0;

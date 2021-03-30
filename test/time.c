@@ -102,7 +102,7 @@ static void *producter(void *arg) {
     }
     np++;
     lutf_exit(arg);
-    assert(1);
+    assert(0);
     return NULL;
 }
 static void *consumer(void *arg) {
@@ -118,7 +118,7 @@ static void *consumer(void *arg) {
     }
     nc += 1;
     lutf_exit(arg);
-    assert(1);
+    assert(0);
     return NULL;
 }
 

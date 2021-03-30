@@ -27,6 +27,7 @@ static void *test1(void *arg) {
     }
     test1_count++;
     lutf_exit((void *)"This is test1 exit value");
+    assert(0);
     return NULL;
 }
 
@@ -40,6 +41,7 @@ static void *test2(void *arg) {
     }
     test2_count++;
     lutf_exit((void *)"This is test2 exit value");
+    assert(0);
     return NULL;
 }
 
@@ -49,6 +51,7 @@ static void *test3(void *arg) {
     }
     test3_count++;
     lutf_exit((void *)"This is test3 exit value");
+    assert(0);
     return NULL;
 }
 
@@ -104,7 +107,7 @@ static void * test4(void *arg __attribute__((unused))) {
             lutf_cancel(&r);
         }
     }
-    assert(1);
+    assert(0);
     return NULL;
 }
 
@@ -117,7 +120,7 @@ static void *test5(void *arg __attribute__((unused))) {
             lutf_cancel(&r);
         }
     }
-    assert(1);
+    assert(0);
     return NULL;
 }
 
@@ -130,7 +133,7 @@ static void *test6(void *arg __attribute__((unused))) {
             lutf_cancel(&r);
         }
     }
-    assert(1);
+    assert(0);
     return NULL;
 }
 
