@@ -170,7 +170,7 @@ static void *test5(void *arg) {
 }
 
 static int _million(void) {
-#define COUNT 100
+#define COUNT 1000
     lutf_t *  threads = malloc(COUNT * sizeof(lutf_t));
     uint32_t *arg     = (uint32_t *)malloc(COUNT * sizeof(uint32_t));
     for (size_t i = 0; i < COUNT; i++) {
@@ -178,10 +178,11 @@ static int _million(void) {
     }
     for (size_t i = 0; i < COUNT / 2; i++) {
         assert(lutf_create(&threads[i], test4, (void *)&arg[i]) == 0);
-        lutf_detach(&threads[i]);
     }
     for (size_t i = COUNT / 2; i < COUNT; i++) {
         assert(lutf_create(&threads[i], test5, (void *)&arg[i]) == 0);
+    }
+    for (size_t i = 0; i < COUNT; i++) {
         lutf_detach(&threads[i]);
     }
     lutf_wait(threads, COUNT);
