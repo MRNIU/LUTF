@@ -22,6 +22,9 @@ static size_t test2_count = 0;
 static size_t test3_count = 0;
 
 static void *test1(void *arg) {
+    if (arg != NULL) {
+        printf("arg: %s\n", (char *)arg);
+    }
     for (size_t i = 0; i < C; i++) {
         ;
     }
@@ -31,6 +34,9 @@ static void *test1(void *arg) {
 }
 
 static void *test2(void *arg) {
+    if (arg != NULL) {
+        printf("arg: %s\n", (char *)arg);
+    }
     // Do some calculations
     for (size_t i = 0; i < C; i++) {
         ;
@@ -41,6 +47,9 @@ static void *test2(void *arg) {
 }
 
 static void *test3(void *arg) {
+    if (arg != NULL) {
+        printf("arg: %s\n", (char *)arg);
+    }
     for (size_t i = 0; i < C; i++) {
         ;
     }
@@ -79,7 +88,7 @@ static int   total_get = 0;
 static int   np        = 0;
 static int   nc        = 0;
 static void *producter(void *arg) {
-    int item;
+    int item = 0;
     for (size_t i = 0; i < FEE * 2; i++) {
         item = i;
         lutf_P(empty);
@@ -95,13 +104,12 @@ static void *producter(void *arg) {
     return NULL;
 }
 static void *consumer(void *arg) {
-    int item;
     for (size_t i = 0; i < FEE; i++) {
         total_get++;
         lutf_P(full);
         lutf_P(lock);
         current -= 1;
-        item = buffer[current];
+        buffer[current] = buffer[current];
         lutf_V(lock);
         lutf_V(empty);
     }

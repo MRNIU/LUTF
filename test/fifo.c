@@ -23,7 +23,7 @@ static size_t test3_count = 0;
 
 static void *test1(void *arg) {
     if (arg != NULL) {
-        *(char *)arg;
+        printf("arg: %s\n", (char *)arg);
     }
     test1_count++;
     lutf_exit((void *)"This is test1 exit value");
@@ -33,7 +33,7 @@ static void *test1(void *arg) {
 
 static void *test2(void *arg) {
     if (arg != NULL) {
-        *(char *)arg;
+        printf("arg: %s\n", (char *)arg);
     }
     // Do some calculations
     for (size_t i = 0; i < C; i++) {
@@ -47,7 +47,7 @@ static void *test2(void *arg) {
 
 static void *test3(void *arg) {
     if (arg != NULL) {
-        *(char *)arg;
+        printf("arg: %s\n", (char *)arg);
     }
     test3_count++;
     lutf_exit((void *)"This is test3 exit value");
