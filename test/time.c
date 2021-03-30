@@ -178,13 +178,15 @@ static int _million(void) {
     }
     for (size_t i = 0; i < COUNT / 2; i++) {
         assert(lutf_create(&threads[i], test4, (void *)&arg[i]) == 0);
+        lutf_detach(&threads[i]);
     }
     for (size_t i = COUNT / 2; i < COUNT; i++) {
         assert(lutf_create(&threads[i], test5, (void *)&arg[i]) == 0);
-    }
-    for (size_t i = 0; i < COUNT; i++) {
         lutf_detach(&threads[i]);
     }
+    // for (size_t i = 0; i < COUNT; i++) {
+    //     lutf_detach(&threads[i]);
+    // }
     lutf_wait(threads, COUNT);
     assert(test4_count == COUNT / 2);
     assert(test5_count == COUNT / 2);
