@@ -16,15 +16,12 @@ extern "C" {
 #include "string.h"
 #include "lutf.h"
 
-#define C 6400000
+#define C CLOCKS_PER_SEC
 static size_t test1_count = 0;
 static size_t test2_count = 0;
 static size_t test3_count = 0;
 
 static void *test1(void *arg) {
-    if (arg != NULL) {
-        printf("arg: %s\n", (char *)arg);
-    }
     for (size_t i = 0; i < C; i++) {
         ;
     }
@@ -34,9 +31,6 @@ static void *test1(void *arg) {
 }
 
 static void *test2(void *arg) {
-    if (arg != NULL) {
-        printf("arg: %s\n", (char *)arg);
-    }
     // Do some calculations
     for (size_t i = 0; i < C; i++) {
         ;
@@ -47,9 +41,6 @@ static void *test2(void *arg) {
 }
 
 static void *test3(void *arg) {
-    if (arg != NULL) {
-        printf("arg: %s\n", (char *)arg);
-    }
     for (size_t i = 0; i < C; i++) {
         ;
     }
@@ -167,7 +158,7 @@ static void *test5(void *arg) {
 }
 
 static int _million(void) {
-#define COUNT 100
+#define COUNT 10000
     lutf_t *  threads = malloc(COUNT * sizeof(lutf_t));
     uint32_t *arg     = (uint32_t *)malloc(COUNT * sizeof(uint32_t));
     for (size_t i = 0; i < COUNT; i++) {

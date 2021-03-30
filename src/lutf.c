@@ -136,8 +136,8 @@ static int wait_(void) {
 }
 
 // TODO: if main is run continuously, mask SIGVTALRM
+// TODO: pref cycle
 static void sched(int signo __attribute__((unused))) {
-
     if (sigsetjmp(env.curr_thread->context, SIGVTALRM) == 0) {
         do {
             env.curr_thread = env.curr_thread->next;
@@ -375,7 +375,13 @@ int lutf_exit(void *value) {
     else {
         env.curr_thread->exit_value = value;
         env.curr_thread->status     = lutf_EXIT;
-        sched(SIGVTALRM);
+        if (env.curr_thread->method == TIME) {
+            SIGUNBLOCK();
+            raise(SIGVTALRM);
+        }
+        else {
+            sched(SIGVTALRM);
+        }
     }
     return 0;
 }
