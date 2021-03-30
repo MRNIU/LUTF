@@ -179,7 +179,7 @@ static void *test8(void *arg) {
 
 // 百万级测试
 static int _million(void) {
-#define COUNT 1000000
+#define COUNT 100
     lutf_t *  threads = malloc(COUNT * sizeof(lutf_t));
     void **   ret     = malloc(COUNT * sizeof(uint32_t *));
     uint32_t *arg     = (uint32_t *)malloc(COUNT * sizeof(uint32_t));

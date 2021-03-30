@@ -123,6 +123,8 @@ static int wait_(void) {
             env.curr_thread->wait_count--;
             printf("%d waited: %d\n", tmp->thread->id, tmp->thread->waited);
             if (tmp->thread->waited == 0) {
+                free(tmp->thread->stack);
+                tmp->thread->stack = NULL;
                 // 从链表中删除
                 tmp->thread->prev->next = tmp->thread->next;
                 tmp->thread->next->prev = tmp->thread->prev;
@@ -172,8 +174,8 @@ static void sched(int signo __attribute__((unused))) {
                 }
                 case lutf_EXIT: {
                     printf("--------EXIT-------\n");
-                    free(env.curr_thread->stack);
-                    env.curr_thread->stack = NULL;
+                    // free(env.curr_thread->stack);
+                    // env.curr_thread->stack = NULL;
                     printf("(%d, %d)\n", env.curr_thread->id,
                            env.curr_thread->waited);
                     // if (env.curr_thread->waited == 0) {
