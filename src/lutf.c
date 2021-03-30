@@ -168,7 +168,9 @@ static void sched(int signo __attribute__((unused))) {
                 case lutf_EXIT: {
                     free(env.curr_thread->stack);
                     env.curr_thread->stack = NULL;
-                    if (env.curr_thread->waited == 0) {
+                    printf("(%d, %d)\n", env.curr_thread->id,
+                           env.curr_thread->waited);
+                    if (env.curr_thread->waited <= 0) {
                         // 从链表中删除
                         env.curr_thread->prev->next = env.curr_thread->next;
                         env.curr_thread->next->prev = env.curr_thread->prev;
