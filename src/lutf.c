@@ -116,6 +116,7 @@ static int wait_(void) {
     wait_t *tmp = env.curr_thread->wait->next;
     while (tmp != env.curr_thread->wait) {
         if (tmp->thread->status == lutf_EXIT) {
+            tmp->thread->waited--;
             // 移出链表
             tmp->prev->next = tmp->next;
             tmp->next->prev = tmp->prev;
@@ -125,7 +126,7 @@ static int wait_(void) {
             // 指针更新
             tmp = tmp2;
             // 被等待-1
-            tmp->thread->waited--;
+            // printf();
             if (--env.curr_thread->wait_count == 1) {
                 env.curr_thread->status = lutf_RUNNING;
                 break;
@@ -170,7 +171,7 @@ static void sched(int signo __attribute__((unused))) {
                     env.curr_thread->stack = NULL;
                     printf("(%d, %d)\n", env.curr_thread->id,
                            env.curr_thread->waited);
-                    if (env.curr_thread->waited <= 0) {
+                    if (env.curr_thread->waited == 0) {
                         // 从链表中删除
                         env.curr_thread->prev->next = env.curr_thread->next;
                         env.curr_thread->next->prev = env.curr_thread->prev;
