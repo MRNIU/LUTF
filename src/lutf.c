@@ -168,6 +168,7 @@ static void sched(int signo __attribute__((unused))) {
                     break;
                 }
                 case lutf_EXIT: {
+                    printf("--------EXIT-------\n");
                     free(env.curr_thread->stack);
                     env.curr_thread->stack = NULL;
                     printf("(%d, %d)\n", env.curr_thread->id,
@@ -178,8 +179,8 @@ static void sched(int signo __attribute__((unused))) {
                         env.curr_thread->next->prev = env.curr_thread->prev;
                         lutf_thread_t *tmp          = env.curr_thread->prev;
                         // 回收资源
-                        lutf_t *t = env.curr_thread;
-                        *t        = NULL;
+                        // lutf_t *t = env.curr_thread;
+                        // *t        = NULL;
                         // printf("*t: %p\n", *t);
                         printf("free sched\n");
                         free(env.curr_thread);
@@ -389,7 +390,7 @@ static int run(lutf_thread_t *thread, void **ret) {
 
 int lutf_join(lutf_t *t, void **ret) {
     assert(t != NULL);
-    SIGBLOCK();
+    // SIGBLOCK();
     lutf_thread_t *thread = *t;
     thread->method        = FIFO;
     return run(thread, ret);
