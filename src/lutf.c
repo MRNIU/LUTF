@@ -113,21 +113,22 @@ struct sigaction sig_act;
     } while (0)
 
 static int wait_(void) {
-    wait_t *tmp = env.curr_thread->wait->next;
+    wait_t *tmp  = env.curr_thread->wait->next;
+    wait_t *tmp2 = tmp->prev;
     while (tmp != env.curr_thread->wait) {
         if (tmp->thread->status == lutf_EXIT) {
             tmp->thread->waited--;
+            printf("%d waited: %d\n", tmp->thread->id, tmp->thread->waited);
             // 移出链表
             tmp->prev->next = tmp->next;
             tmp->next->prev = tmp->prev;
-            wait_t *tmp2    = tmp->prev;
             // 释放资源
             free(tmp);
             // 指针更新
             tmp = tmp2;
             // 被等待-1
-            printf("%d waited: %d\n", env.curr_thread->id, tmp->thread->waited);
             if (--env.curr_thread->wait_count == 1) {
+                printf("1111111RUNNING\n");
                 env.curr_thread->status = lutf_RUNNING;
                 break;
             }
@@ -341,7 +342,7 @@ static int add_wait_list(lutf_thread_t *thread) {
     return 0;
 }
 
-static int run(lutf_thread_t *thread, void **ret) {
+static int run(lutf_thread_t *thread) {
     assert(thread != NULL);
     // 添加到线程管理结构
     add_list(thread);
@@ -379,9 +380,6 @@ static int run(lutf_thread_t *thread, void **ret) {
 #endif
         // 执行函数
         env.curr_thread->func(env.curr_thread->arg);
-        if (ret != NULL) {
-            *ret = env.curr_thread->exit_value;
-        }
         env.curr_thread->status = lutf_EXIT;
         sched(SIGVTALRM);
     }
@@ -393,7 +391,11 @@ int lutf_join(lutf_t *t, void **ret) {
     SIGBLOCK();
     lutf_thread_t *thread = *t;
     thread->method        = FIFO;
-    return run(thread, ret);
+    run(thread);
+    if (ret != NULL) {
+        *ret = thread->exit_value;
+    }
+    return 0;
 }
 
 int lutf_detach(lutf_t *t) {
@@ -401,7 +403,8 @@ int lutf_detach(lutf_t *t) {
     SIGUNBLOCK();
     lutf_thread_t *thread = *t;
     thread->method        = TIME;
-    return run(thread, NULL);
+    run(thread);
+    return 0;
 }
 
 int lutf_wait(lutf_t *t, size_t size) {
@@ -423,11 +426,7 @@ int lutf_exit(void *value) {
     if (env.curr_thread != env.main_thread) {
         env.curr_thread->exit_value = value;
         env.curr_thread->status     = lutf_EXIT;
-        // TODO: 优化
-        if (env.curr_thread->method == TIME) {
-            SIGUNBLOCK();
-            raise(SIGVTALRM);
-        }
+        sched(SIGVTALRM);
     }
     return 0;
 }

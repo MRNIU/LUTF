@@ -102,6 +102,7 @@ static void *producter(void *arg) {
     }
     np++;
     lutf_exit(arg);
+    assert(1);
     return NULL;
 }
 static void *consumer(void *arg) {
@@ -117,6 +118,7 @@ static void *consumer(void *arg) {
     }
     nc += 1;
     lutf_exit(arg);
+    assert(1);
     return NULL;
 }
 
@@ -152,6 +154,7 @@ static void *test4(void *arg) {
     }
     test4_count++;
     lutf_exit(arg);
+    assert(1);
     return NULL;
 }
 
@@ -162,6 +165,7 @@ static void *test5(void *arg) {
     }
     test5_count++;
     lutf_exit(arg);
+    assert(1);
     return NULL;
 }
 
