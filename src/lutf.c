@@ -126,7 +126,7 @@ static int wait_(void) {
             // 指针更新
             tmp = tmp2;
             // 被等待-1
-            printf("waited: %d\n", tmp->thread->waited);
+            printf("%d waited: %d\n", env.curr_thread->id, tmp->thread->waited);
             if (--env.curr_thread->wait_count == 1) {
                 env.curr_thread->status = lutf_RUNNING;
                 break;
