@@ -154,7 +154,7 @@ static void *test4(void *arg) {
     }
     test4_count++;
     lutf_exit(arg);
-    assert(1);
+    assert(0);
     return NULL;
 }
 
@@ -165,7 +165,7 @@ static void *test5(void *arg) {
     }
     test5_count++;
     lutf_exit(arg);
-    assert(1);
+    assert(0);
     return NULL;
 }
 

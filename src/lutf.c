@@ -425,7 +425,8 @@ int lutf_exit(void *value) {
     SIGBLOCK();
     if (env.curr_thread != env.main_thread) {
         env.curr_thread->exit_value = value;
-        env.curr_thread->status     = lutf_EXIT;
+        printf("%d exit\n", env.curr_thread->id);
+        env.curr_thread->status = lutf_EXIT;
         sched(SIGVTALRM);
     }
     return 0;
