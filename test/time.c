@@ -172,7 +172,7 @@ static void *test5(void *arg) {
 }
 
 static int _million(void) {
-#define COUNT 20
+#define COUNT 1000000
     lutf_t *  threads = malloc(COUNT * sizeof(lutf_t));
     uint32_t *arg     = (uint32_t *)malloc(COUNT * sizeof(uint32_t));
     for (size_t i = 0; i < COUNT; i++) {

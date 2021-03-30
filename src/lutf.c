@@ -126,7 +126,7 @@ static int wait_(void) {
             // 指针更新
             tmp = tmp2;
             // 被等待-1
-            // printf();
+            printf("waited: %d\n", tmp->thread->waited);
             if (--env.curr_thread->wait_count == 1) {
                 env.curr_thread->status = lutf_RUNNING;
                 break;
@@ -144,6 +144,7 @@ static void sched(int signo __attribute__((unused))) {
         do {
             // 切换到下个线程
             env.curr_thread = env.curr_thread->next;
+            printf("(x%d, %d)\n", env.curr_thread->id, env.curr_thread->status);
             // 根据状态
             switch (env.curr_thread->status) {
                 // 跳过
