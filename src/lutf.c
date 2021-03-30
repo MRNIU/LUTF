@@ -130,6 +130,11 @@ static int wait_(void) {
             // 指针更新
             tmp = tmp2;
         }
+        if (env.curr_thread->wait_count == 1) {
+            env.curr_thread->status = lutf_RUNNING;
+            printf("11111111: %d\n", env.curr_thread->id);
+            break;
+        }
         tmp = tmp->next;
     }
     return 0;
@@ -155,10 +160,6 @@ static void sched(int signo __attribute__((unused))) {
                 }
                 case lutf_WAIT: {
                     wait_();
-                    if (env.curr_thread->wait_count == 1) {
-                        env.curr_thread->status = lutf_RUNNING;
-                        printf("11111111: %d\n", env.curr_thread->id);
-                    }
                     break;
                 }
                 case lutf_SLEEP: {
