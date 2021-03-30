@@ -121,16 +121,6 @@ static int wait_(void) {
             tmp->thread->waited--;
             // 等待-1
             env.curr_thread->wait_count--;
-            if (env.curr_thread->wait_count == 1) {
-                if (tmp->thread->stack == NULL) {
-                    env.curr_thread->status = lutf_RUNNING;
-                    printf("11111111: %d\n", env.curr_thread->id);
-                    break;
-                }
-                else {
-                    break;
-                }
-            }
             printf("%d waited: %d\n", tmp->thread->id, tmp->thread->waited);
             // 移出链表
             tmp->prev->next = tmp->next;
@@ -140,10 +130,21 @@ static int wait_(void) {
             // 指针更新
             tmp = tmp2;
         }
+        if (env.curr_thread->wait_count == 1) {
+            if (tmp->thread->stack == NULL) {
+                env.curr_thread->status = lutf_RUNNING;
+                printf("11111111: %d\n", env.curr_thread->id);
+                break;
+            }
+        }
         tmp = tmp->next;
     }
     return 0;
 }
+
+// BUG: 调度时线程变为 EXIT，但是没有回收，由于循环链表，下次运行 wait
+// 线程时，会导致不释放 解决方法：增加一个 FREE 状态，waited 线程在 FREE
+// 时才会将 wait 设为 RUNNING
 
 // 对周期处理的操作计数
 static void sched(int signo __attribute__((unused))) {
@@ -161,19 +162,6 @@ static void sched(int signo __attribute__((unused))) {
                     break;
                 }
                 case lutf_RUNNING: {
-                    break;
-                }
-                case lutf_WAIT: {
-                    wait_();
-                    break;
-                }
-                case lutf_SLEEP: {
-                    if (clock() > env.curr_thread->resume_time) {
-                        env.curr_thread->status = lutf_RUNNING;
-                    }
-                    break;
-                }
-                case lutf_SEM: {
                     break;
                 }
                 case lutf_EXIT: {
@@ -195,6 +183,19 @@ static void sched(int signo __attribute__((unused))) {
                         free(env.curr_thread);
                         // 指针更新
                         env.curr_thread = tmp;
+                    }
+                    break;
+                }
+                case lutf_WAIT: {
+                    wait_();
+                    break;
+                }
+                case lutf_SEM: {
+                    break;
+                }
+                case lutf_SLEEP: {
+                    if (clock() > env.curr_thread->resume_time) {
+                        env.curr_thread->status = lutf_RUNNING;
                     }
                     break;
                 }
@@ -478,9 +479,9 @@ int lutf_cancel(lutf_t *t) {
     assert(t != NULL);
     SIGBLOCK();
     lutf_thread_t *thread = *t;
-    if (env.curr_thread != env.main_thread) {
-        env.curr_thread->exit_value = NULL;
-        env.curr_thread->status     = lutf_EXIT;
+    if (thread != env.main_thread) {
+        thread->exit_value = NULL;
+        thread->status     = lutf_EXIT;
         sched(SIGVTALRM);
     }
     return 0;

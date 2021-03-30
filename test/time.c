@@ -170,7 +170,7 @@ static void *test5(void *arg) {
 }
 
 static int _million(void) {
-#define COUNT 1000
+#define COUNT 100
     lutf_t *  threads = malloc(COUNT * sizeof(lutf_t));
     uint32_t *arg     = (uint32_t *)malloc(COUNT * sizeof(uint32_t));
     for (size_t i = 0; i < COUNT; i++) {
@@ -193,18 +193,18 @@ static int _million(void) {
 
 int time_(void) {
     printf("--------TIME--------\n");
-    printf("In this mode, threads will be scheduled based on time "
-           "resources.\n");
-    printf("----detach_exit_wait----\n");
-    printf("Create a thread, run and output its return value.\n");
-    printf("Functions used: lutf_create, lutf_detach, lutf_wait, "
-           "lutf_exit.\n");
-    assert(_detach_exit_wait() == 0);
-    printf("----sync----\n");
-    assert(_sync() == 0);
-    printf("----million----\n");
-    printf("Create %d threads, run and output its return value.\n", COUNT);
-    printf("Functions used are: lutf_create, lutf_detach, lutf_exit.\n");
+    // printf("In this mode, threads will be scheduled based on time "
+    //        "resources.\n");
+    // printf("----detach_exit_wait----\n");
+    // printf("Create a thread, run and output its return value.\n");
+    // printf("Functions used: lutf_create, lutf_detach, lutf_wait, "
+    //        "lutf_exit.\n");
+    // assert(_detach_exit_wait() == 0);
+    // printf("----sync----\n");
+    // assert(_sync() == 0);
+    // printf("----million----\n");
+    // printf("Create %d threads, run and output its return value.\n", COUNT);
+    // printf("Functions used are: lutf_create, lutf_detach, lutf_exit.\n");
     assert(_million() == 0);
     printf("--------TIME END--------\n");
     return 0;
