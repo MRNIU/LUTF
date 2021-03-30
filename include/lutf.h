@@ -24,8 +24,6 @@ extern "C" {
 #include "sys/types.h"
 #include "setjmp.h"
 
-// TODO: 内存回收
-
 // do not less than lutf internal exec time, ms
 #define SLICE (128)
 // thread stack size, 128byte
@@ -101,8 +99,11 @@ int lutf_sleep(lutf_t *thread, size_t sec);
 lutf_t lutf_self(void);
 // compare two threads if same
 // return value：return 1 same
-int           lutf_equal(lutf_t *thread1, lutf_t *thread2);
-lutf_status_t lutf_status(lutf_t *thread1);
+int lutf_equal(lutf_t *thread1, lutf_t *thread2);
+// get thread status
+// thread: which thread
+// return value: one of lutf_status_t
+lutf_status_t lutf_status(lutf_t *thread);
 // cancel thread
 // thread: thread to cancel
 // return value: return 0 on success

@@ -113,20 +113,19 @@ struct sigaction sig_act;
     } while (0)
 
 static int wait_(void) {
-    // 在 wait 的处理中，首先看 wait thread 是否为 EXIT
-    // 如果是，将其从 wait 链表中删除，将 waitcount-1，将 waited-1
-    // 如果 waited==0，将其回收
-    // 如果 waitcount==0，将 status 设为 RUNNING
-
     wait_t *tmp = env.curr_thread->wait->next;
     while (tmp != env.curr_thread->wait) {
         if (tmp->thread->status == lutf_EXIT) {
             // 移出链表
             tmp->prev->next = tmp->next;
             tmp->next->prev = tmp->prev;
-            if (--tmp->thread->waited == 0) {
-                // 回收资源
-            }
+            wait_t *tmp2    = tmp->prev;
+            // 释放资源
+            free(tmp);
+            // 指针更新
+            tmp = tmp2;
+            // 被等待-1
+            tmp->thread->waited--;
             if (--env.curr_thread->wait_count == 1) {
                 env.curr_thread->status = lutf_RUNNING;
                 break;
@@ -169,12 +168,16 @@ static void sched(int signo __attribute__((unused))) {
                 case lutf_EXIT: {
                     free(env.curr_thread->stack);
                     env.curr_thread->stack = NULL;
-                    // env.curr_thread->prev->next = env.curr_thread->next;
-                    // env.curr_thread->next->prev = env.curr_thread->prev;
-                    // env.curr_thread->wait.prev->wait.next =
-                    //     env.curr_thread->wait.next;
-                    // env.curr_thread->wait.next->wait.prev =
-                    //     env.curr_thread->wait.prev;
+                    if (env.curr_thread->waited == 0) {
+                        // 从链表中删除
+                        env.curr_thread->prev->next = env.curr_thread->next;
+                        env.curr_thread->next->prev = env.curr_thread->prev;
+                        lutf_thread_t *tmp          = env.curr_thread->prev;
+                        // 回收资源
+                        free(env.curr_thread);
+                        // 指针更新
+                        env.curr_thread = tmp;
+                    }
                     break;
                 }
             }
@@ -444,7 +447,12 @@ int lutf_equal(lutf_t *t1, lutf_t *t2) {
 lutf_status_t lutf_status(lutf_t *t) {
     assert(t != NULL);
     lutf_thread_t *thread = *t;
-    return thread->status;
+    if (thread == NULL) {
+        return lutf_EXIT;
+    }
+    else {
+        return thread->status;
+    }
 }
 
 int lutf_cancel(lutf_t *t) {
