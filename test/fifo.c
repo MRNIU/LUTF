@@ -17,33 +17,37 @@ extern "C" {
 #include "lutf.h"
 
 #define C 6400000
+static size_t test1_count = 0;
+static size_t test2_count = 0;
+static size_t test3_count = 0;
+
 static void *test1(void *arg) {
-    printf("test1\n");
     if (arg != NULL) {
-        printf("arg: %s\n", (char *)arg);
+        *(char *)arg;
     }
+    test1_count++;
     lutf_exit((void *)"This is test1 exit value");
     return NULL;
 }
 
 static void *test2(void *arg) {
-    printf("test2\n");
     if (arg != NULL) {
-        printf("arg: %s\n", (char *)arg);
+        *(char *)arg;
     }
     // Do some calculations
     for (size_t i = 0; i < C; i++) {
         ;
     }
+    test2_count++;
     lutf_exit((void *)"This is test2 exit value");
     return NULL;
 }
 
 static void *test3(void *arg) {
-    printf("test3\n");
     if (arg != NULL) {
-        printf("arg: %s\n", (char *)arg);
+        *(char *)arg;
     }
+    test3_count++;
     lutf_exit((void *)"This is test3 exit value");
     return NULL;
 }
@@ -62,6 +66,9 @@ static int _join_exit(void) {
     assert(strcmp("This is test2 exit value", (char *)ret[1]) == 0);
     lutf_join(&threads[2], &ret[2]);
     assert(strcmp("This is test3 exit value", (char *)ret[2]) == 0);
+    assert(test1_count == 1);
+    assert(test2_count == 1);
+    assert(test3_count == 1);
     return 0;
 }
 
@@ -85,8 +92,12 @@ static int _equal(void) {
     return 0;
 }
 
-static void *test4(void *arg __attribute__((unused))) {
+static size_t test4_count = 0;
+static size_t test5_count = 0;
+static size_t test6_count = 0;
+static void * test4(void *arg __attribute__((unused))) {
     int index = 3;
+    test4_count++;
     while (1) {
         if (--index == 0) {
             lutf_t r = lutf_self();
@@ -99,6 +110,7 @@ static void *test4(void *arg __attribute__((unused))) {
 
 static void *test5(void *arg __attribute__((unused))) {
     int index = 3;
+    test5_count++;
     while (1) {
         if (--index == 0) {
             lutf_t r = lutf_self();
@@ -111,6 +123,7 @@ static void *test5(void *arg __attribute__((unused))) {
 
 static void *test6(void *arg __attribute__((unused))) {
     int index = 3;
+    test6_count++;
     while (1) {
         if (--index == 0) {
             lutf_t r = lutf_self();
@@ -129,14 +142,20 @@ static int _cancel_self(void) {
     lutf_join(&threads[0], NULL);
     lutf_join(&threads[1], NULL);
     lutf_join(&threads[2], NULL);
+    assert(test4_count == 1);
+    assert(test5_count == 1);
+    assert(test6_count == 1);
     return 0;
 }
 
-static void *test7(void *arg) {
+static size_t test7_count = 0;
+static size_t test8_count = 0;
+static void * test7(void *arg) {
     printf("test7\n");
     if (arg != NULL) {
         printf("arg: %d\n", *(uint32_t *)arg);
     }
+    test7_count++;
     lutf_exit(arg);
     return NULL;
 }
@@ -150,13 +169,14 @@ static void *test8(void *arg) {
     for (size_t i = 0; i < C; i++) {
         ;
     }
+    test8_count++;
     lutf_exit(arg);
     return NULL;
 }
 
 // 百万级测试
 static int _million(void) {
-#define COUNT 16
+#define COUNT 1000000
     lutf_t *  threads = malloc(COUNT * sizeof(lutf_t));
     void **   ret     = malloc(COUNT * sizeof(uint32_t *));
     uint32_t *arg     = (uint32_t *)malloc(COUNT * sizeof(uint32_t));
@@ -181,6 +201,8 @@ static int _million(void) {
         lutf_join(&threads[i], &ret[i]);
         assert(*(uint32_t *)ret[i] == i);
     }
+    assert(test7_count == COUNT / 2);
+    assert(test8_count == COUNT / 2);
     return 0;
 }
 
@@ -198,7 +220,7 @@ int fifo(void) {
     printf("Cancel a thread itself\n");
     assert(_cancel_self() == 0);
     printf("----million----\n");
-    printf("Create a million threads, run and output its return value.\n");
+    printf("Create %d threads, run and output its return value.\n", COUNT);
     printf("Functions used are: lutf_create, lutf_join, lutf_exit.\n");
     assert(_million() == 0);
     printf("--------FIFO END--------\n");

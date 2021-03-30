@@ -17,15 +17,18 @@ extern "C" {
 #include "lutf.h"
 
 #define C 6400000
+static size_t test1_count = 0;
+static size_t test2_count = 0;
+static size_t test3_count = 0;
+
 static void *test1(void *arg) {
     if (arg != NULL) {
         printf("arg: %s\n", (char *)arg);
     }
     for (size_t i = 0; i < C; i++) {
-        if (i % 100000 == 0) {
-            printf("test1");
-        }
+        ;
     }
+    test1_count++;
     lutf_exit((void *)"This is test1 exit value");
     return NULL;
 }
@@ -36,10 +39,9 @@ static void *test2(void *arg) {
     }
     // Do some calculations
     for (size_t i = 0; i < C; i++) {
-        if (i % 100000 == 0) {
-            printf("test2");
-        }
+        ;
     }
+    test2_count++;
     lutf_exit((void *)"This is test2 exit value");
     return NULL;
 }
@@ -49,10 +51,9 @@ static void *test3(void *arg) {
         printf("arg: %s\n", (char *)arg);
     }
     for (size_t i = 0; i < C; i++) {
-        if (i % 100000 == 0) {
-            printf("test3");
-        }
+        ;
     }
+    test3_count++;
     lutf_exit((void *)"This is test3 exit value");
     return NULL;
 }
@@ -70,6 +71,9 @@ static int _detach_exit_wait(void) {
     lutf_detach(&threads[2]);
     // 等待退出
     lutf_wait(threads, 3);
+    assert(test1_count == 1);
+    assert(test2_count == 1);
+    assert(test3_count == 1);
     return 0;
 }
 
@@ -137,35 +141,37 @@ static int _sync(void) {
     return 0;
 }
 
+static size_t test4_count = 0;
+static size_t test5_count = 0;
+
 static void *test4(void *arg) {
     if (arg != NULL) {
-        printf("arg: %d\n", *(uint32_t *)arg);
+        *(uint32_t *)arg = *(uint32_t *)arg;
     }
+    // Do some calculations
     for (size_t i = 0; i < C; i++) {
-        if (i % 100000 == 0) {
-            printf("test4");
-        }
+        ;
     }
+    test4_count++;
     lutf_exit(arg);
     return NULL;
 }
 
 static void *test5(void *arg) {
     if (arg != NULL) {
-        printf("arg: %d\n", *(uint32_t *)arg);
+        *(uint32_t *)arg = *(uint32_t *)arg;
     }
     // Do some calculations
     for (size_t i = 0; i < C; i++) {
-        if (i % 100000 == 0) {
-            printf("test5");
-        }
+        ;
     }
+    test5_count++;
     lutf_exit(arg);
     return NULL;
 }
 
 static int _million(void) {
-#define COUNT 10
+#define COUNT 1000000
     lutf_t *  threads = malloc(COUNT * sizeof(lutf_t));
     uint32_t *arg     = (uint32_t *)malloc(COUNT * sizeof(uint32_t));
     for (size_t i = 0; i < COUNT; i++) {
@@ -181,6 +187,8 @@ static int _million(void) {
         lutf_detach(&threads[i]);
     }
     lutf_wait(threads, COUNT);
+    assert(test4_count == COUNT / 2);
+    assert(test5_count == COUNT / 2);
     return 0;
 }
 
@@ -196,7 +204,7 @@ int time_(void) {
     printf("----sync----\n");
     assert(_sync() == 0);
     printf("----million----\n");
-    printf("Create a million threads, run and output its return value.\n");
+    printf("Create %d threads, run and output its return value.\n", COUNT);
     printf("Functions used are: lutf_create, lutf_detach, lutf_exit.\n");
     assert(_million() == 0);
     printf("--------TIME END--------\n");
