@@ -121,6 +121,16 @@ static int wait_(void) {
             tmp->thread->waited--;
             // 等待-1
             env.curr_thread->wait_count--;
+            if (env.curr_thread->wait_count == 1) {
+                if (tmp->thread->stack == NULL) {
+                    env.curr_thread->status = lutf_RUNNING;
+                    printf("11111111: %d\n", env.curr_thread->id);
+                    break;
+                }
+                else {
+                    break;
+                }
+            }
             printf("%d waited: %d\n", tmp->thread->id, tmp->thread->waited);
             // 移出链表
             tmp->prev->next = tmp->next;
@@ -129,13 +139,6 @@ static int wait_(void) {
             free(tmp);
             // 指针更新
             tmp = tmp2;
-        }
-        if (env.curr_thread->wait_count == 1) {
-            if (tmp->thread->stack == NULL) {
-                env.curr_thread->status = lutf_RUNNING;
-                printf("11111111: %d\n", env.curr_thread->id);
-                break;
-            }
         }
         tmp = tmp->next;
     }
