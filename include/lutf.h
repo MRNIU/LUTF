@@ -56,6 +56,7 @@ typedef enum lutf_status {
     lutf_READY = 0,
     lutf_RUNNING,
     lutf_EXIT,
+    lutf_FREE,
     lutf_WAIT,
     lutf_SEM,
     lutf_SLEEP,
