@@ -390,7 +390,7 @@ static int run(lutf_thread_t *thread, void **ret) {
 
 int lutf_join(lutf_t *t, void **ret) {
     assert(t != NULL);
-    // SIGBLOCK();
+    SIGBLOCK();
     lutf_thread_t *thread = *t;
     thread->method        = FIFO;
     return run(thread, ret);
@@ -423,6 +423,7 @@ int lutf_exit(void *value) {
     if (env.curr_thread != env.main_thread) {
         env.curr_thread->exit_value = value;
         env.curr_thread->status     = lutf_EXIT;
+        // TODO: 优化
         if (env.curr_thread->method == TIME) {
             SIGUNBLOCK();
             raise(SIGVTALRM);

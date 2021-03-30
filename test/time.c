@@ -89,7 +89,7 @@ lutf_S_t *   lock;
 static int   total_get = 0;
 static int   np        = 0;
 static int   nc        = 0;
-static void *producter(void *arg __attribute__((unused))) {
+static void *producter(void *arg) {
     int item;
     for (size_t i = 0; i < FEE * 2; i++) {
         item = i;
@@ -101,10 +101,10 @@ static void *producter(void *arg __attribute__((unused))) {
         lutf_V(full);
     }
     np++;
-    lutf_exit(NULL);
+    lutf_exit(arg);
     return NULL;
 }
-static void *consumer(void *arg __attribute__((unused))) {
+static void *consumer(void *arg) {
     int item;
     for (size_t i = 0; i < FEE; i++) {
         total_get++;
@@ -116,7 +116,7 @@ static void *consumer(void *arg __attribute__((unused))) {
         lutf_V(empty);
     }
     nc += 1;
-    lutf_exit(NULL);
+    lutf_exit(arg);
     return NULL;
 }
 
@@ -138,7 +138,7 @@ static int _sync(void) {
     assert(np == PROD);
     assert(nc == CONS);
     assert(total_get == FEE * CONS);
-    printf("stat: %d\n", lutf_status(&p[0]));
+    // printf("stat: %d\n", lutf_status(&p[0]));
     return 0;
 }
 
@@ -146,9 +146,6 @@ static size_t test4_count = 0;
 static size_t test5_count = 0;
 
 static void *test4(void *arg) {
-    if (arg != NULL) {
-        *(uint32_t *)arg = *(uint32_t *)arg;
-    }
     // Do some calculations
     for (size_t i = 0; i < C; i++) {
         ;
@@ -159,9 +156,6 @@ static void *test4(void *arg) {
 }
 
 static void *test5(void *arg) {
-    if (arg != NULL) {
-        *(uint32_t *)arg = *(uint32_t *)arg;
-    }
     // Do some calculations
     for (size_t i = 0; i < C; i++) {
         ;
