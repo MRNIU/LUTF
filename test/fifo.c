@@ -177,7 +177,6 @@ static void *test8(void *arg) {
     return NULL;
 }
 
-// 百万级测试
 static int _million(void) {
 #define COUNT 100
     lutf_t *  threads = malloc(COUNT * sizeof(lutf_t));

@@ -11,18 +11,11 @@
 extern "C" {
 #endif
 
-// 评审规则
-// demo功能覆盖度
-// 项目功能说明书
-// 项目背景是否清晰、功能描述是否清晰、使用和操作指引是否清晰
-// 题目完成的完整性和正确性
-// 代码架构设计的优雅性
-// 代码编写的规范性
-// 测试用例完成度和覆盖程度
-
 #include "stdint.h"
 #include "sys/types.h"
 #include "setjmp.h"
+
+// BUG: GC
 
 // do not less than lutf internal exec time, ms
 #define SLICE (128)

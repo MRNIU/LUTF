@@ -65,11 +65,9 @@ static int _detach_exit_wait(void) {
     assert(lutf_create(&threads[0], test1, (void *)arg[0]) == 0);
     assert(lutf_create(&threads[1], test2, (void *)arg[1]) == 0);
     assert(lutf_create(&threads[2], test3, (void *)arg[2]) == 0);
-    // 开始运行
     lutf_detach(&threads[0]);
     lutf_detach(&threads[1]);
     lutf_detach(&threads[2]);
-    // 等待退出
     lutf_wait(threads, 3);
     assert(test1_count == 1);
     assert(test2_count == 1);
@@ -140,7 +138,6 @@ static int _sync(void) {
     assert(np == PROD);
     assert(nc == CONS);
     assert(total_get == FEE * CONS);
-    // printf("stat: %d\n", lutf_status(&p[0]));
     return 0;
 }
 
