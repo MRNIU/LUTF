@@ -25,7 +25,6 @@ extern "C" {
 #include "setjmp.h"
 
 // TODO: 内存回收
-// TODO: 优化 wait 处理
 
 // do not less than lutf internal exec time, ms
 #define SLICE (128)
@@ -63,53 +62,6 @@ typedef enum lutf_status {
     lutf_SEM,
     lutf_SLEEP,
 } lutf_status_t;
-
-// sched method
-typedef enum {
-    FIFO = 1,
-    TIME = 2,
-} lutf_sched_t;
-
-// thread id type
-typedef ssize_t lutf_task_id_t;
-
-typedef struct waitt {
-    struct lutf_thread *thread;
-    struct waitt *      prev;
-    struct waitt *      next;
-} wait_t;
-
-// thread
-typedef struct lutf_thread {
-    // thread id
-    lutf_task_id_t id;
-    // thread status
-    lutf_status_t status;
-    // thread stack
-    char *stack;
-    // function
-    lutf_fun_t func;
-    // function parameter
-    void *arg;
-    // exit value
-    void *exit_value;
-    // jmp_buf
-    jmp_buf context;
-    // prev thread
-    struct lutf_thread *prev;
-    // next thread
-    struct lutf_thread *next;
-    // wait list
-    wait_t *wait;
-    size_t  wait_count;
-    size_t  waited;
-    // prior
-    lutf_prior_t prior;
-    // resume time
-    clock_t resume_time;
-    // sched
-    lutf_sched_t method;
-} lutf_thread_t;
 
 // set prior
 // thread: which thread
@@ -149,7 +101,8 @@ int lutf_sleep(lutf_t *thread, size_t sec);
 lutf_t lutf_self(void);
 // compare two threads if same
 // return value：return 1 same
-int lutf_equal(lutf_t *thread1, lutf_t *thread2);
+int           lutf_equal(lutf_t *thread1, lutf_t *thread2);
+lutf_status_t lutf_status(lutf_t *thread1);
 // cancel thread
 // thread: thread to cancel
 // return value: return 0 on success

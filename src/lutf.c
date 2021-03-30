@@ -18,6 +18,53 @@ extern "C" {
 
 // TODO: 剔除多余代码
 
+// sched method
+typedef enum {
+    FIFO = 1,
+    TIME = 2,
+} lutf_sched_t;
+
+// thread id type
+typedef ssize_t lutf_task_id_t;
+
+typedef struct waitt {
+    struct lutf_thread *thread;
+    struct waitt *      prev;
+    struct waitt *      next;
+} wait_t;
+
+// thread
+typedef struct lutf_thread {
+    // thread id
+    lutf_task_id_t id;
+    // thread status
+    lutf_status_t status;
+    // thread stack
+    char *stack;
+    // function
+    lutf_fun_t func;
+    // function parameter
+    void *arg;
+    // exit value
+    void *exit_value;
+    // jmp_buf
+    jmp_buf context;
+    // prev thread
+    struct lutf_thread *prev;
+    // next thread
+    struct lutf_thread *next;
+    // wait list
+    wait_t *wait;
+    size_t  wait_count;
+    size_t  waited;
+    // prior
+    lutf_prior_t prior;
+    // resume time
+    clock_t resume_time;
+    // sched
+    lutf_sched_t method;
+} lutf_thread_t;
+
 // global val
 typedef struct lutf_env {
     size_t         nid;
@@ -66,11 +113,18 @@ struct sigaction sig_act;
     } while (0)
 
 static int wait_(void) {
+    // 在 wait 的处理中，首先看 wait thread 是否为 EXIT
+    // 如果是，将其从 wait 链表中删除，将 waitcount-1，将 waited-1
+    // 如果 waited==0，将其回收
+    // 如果 waitcount==0，将 status 设为 RUNNING
+
     wait_t *tmp = env.curr_thread->wait->next;
     while (tmp != env.curr_thread->wait) {
         if (tmp->thread->status == lutf_EXIT) {
+            // 移出链表
+            tmp->prev->next = tmp->next;
+            tmp->next->prev = tmp->prev;
             if (--tmp->thread->waited == 0) {
-                // 移出链表
                 // 回收资源
             }
             if (--env.curr_thread->wait_count == 1) {
@@ -259,8 +313,8 @@ static int add_list(lutf_thread_t *thread) {
 }
 
 static int add_wait_list(lutf_thread_t *thread) {
-    wait_t *prev      = env.main_thread->wait->prev;
-    wait_t *next      = env.main_thread->wait;
+    wait_t *prev      = env.curr_thread->wait->prev;
+    wait_t *next      = env.curr_thread->wait;
     wait_t *new_entry = (wait_t *)malloc(sizeof(wait_t));
     new_entry->prev   = new_entry;
     new_entry->next   = new_entry;
@@ -342,12 +396,11 @@ int lutf_wait(lutf_t *t, size_t size) {
     assert(t != NULL);
     assert(size != 0);
     SIGBLOCK();
-    lutf_thread_t *threads  = *t;
     env.curr_thread->status = lutf_WAIT;
     for (size_t i = 0; i < size; i++) {
         // 将新进程添加到当前进程的等待链表
-        add_wait_list(&threads[i]);
-        threads[i].waited++;
+        add_wait_list((lutf_thread_t *)t[i]);
+        ((lutf_thread_t *)t[i])->waited++;
     }
     sched(SIGVTALRM);
     return 0;
@@ -381,17 +434,24 @@ lutf_t lutf_self(void) {
 }
 
 int lutf_equal(lutf_t *t1, lutf_t *t2) {
+    assert(t1 != NULL);
+    assert(t2 != NULL);
     lutf_thread_t *thread1 = *t1;
     lutf_thread_t *thread2 = *t2;
     return (thread1->id == thread2->id) ? 1 : 0;
+}
+
+lutf_status_t lutf_status(lutf_t *t) {
+    assert(t != NULL);
+    lutf_thread_t *thread = *t;
+    return thread->status;
 }
 
 int lutf_cancel(lutf_t *t) {
     lutf_thread_t *thread = *t;
     thread->status        = lutf_EXIT;
     if (env.curr_thread == thread) {
-        SIGUNBLOCK();
-        raise(SIGVTALRM);
+        sched(SIGVTALRM);
     }
     return 0;
 }

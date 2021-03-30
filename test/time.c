@@ -70,15 +70,6 @@ static int _detach_exit_wait(void) {
     lutf_detach(&threads[2]);
     // 等待退出
     lutf_wait(threads, 3);
-    // BUG: wait 失效，threads 在这里的状态是 RUNNING
-    // lutf_thread_t *thread1 = threads[0];
-    // lutf_thread_t *thread2 = threads[1];
-    // lutf_thread_t *thread3 = threads[2];
-    // assert(thread1->status == lutf_EXIT);
-    // assert(thread2->status == lutf_EXIT);
-    // assert(thread3->status == lutf_EXIT);
-
-    printf("=================\n");
     return 0;
 }
 
@@ -204,10 +195,10 @@ int time_(void) {
     assert(_detach_exit_wait() == 0);
     printf("----sync----\n");
     assert(_sync() == 0);
-    // printf("----million----\n");
-    // printf("Create a million threads, run and output its return value.\n");
-    // printf("Functions used are: lutf_create, lutf_detach, lutf_exit.\n");
-    // assert(_million() == 0);
+    printf("----million----\n");
+    printf("Create a million threads, run and output its return value.\n");
+    printf("Functions used are: lutf_create, lutf_detach, lutf_exit.\n");
+    assert(_million() == 0);
     printf("--------TIME END--------\n");
     return 0;
 }
