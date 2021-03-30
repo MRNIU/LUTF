@@ -122,6 +122,15 @@ static int wait_(void) {
             // 等待-1
             env.curr_thread->wait_count--;
             printf("%d waited: %d\n", tmp->thread->id, tmp->thread->waited);
+            if (tmp->thread->waited == 0) {
+                // 从链表中删除
+                tmp->thread->prev->next = tmp->thread->next;
+                tmp->thread->next->prev = tmp->thread->prev;
+                printf("free sched\n");
+                free(tmp->thread);
+                // 指针更新
+                // env.curr_thread = tmp;
+            }
             // 移出链表
             tmp->prev->next = tmp->next;
             tmp->next->prev = tmp->prev;
@@ -147,8 +156,7 @@ static int wait_(void) {
 // 对周期处理的操作计数
 static void sched(int signo __attribute__((unused))) {
     // TODO: 多次调度均运行 main 时，屏蔽 SIGVTALRM 信号
-    lutf_thread_t *tmp = env.curr_thread;
-    if (sigsetjmp(tmp->context, SIGVTALRM) == 0) {
+    if (sigsetjmp(env.curr_thread->context, SIGVTALRM) == 0) {
         do {
             // 切换到下个线程
             env.curr_thread = env.curr_thread->next;
@@ -162,34 +170,12 @@ static void sched(int signo __attribute__((unused))) {
                 case lutf_RUNNING: {
                     break;
                 }
-                case lutf_FREE: {
+                case lutf_EXIT: {
+                    printf("--------EXIT-------\n");
                     free(env.curr_thread->stack);
                     env.curr_thread->stack = NULL;
                     printf("(%d, %d)\n", env.curr_thread->id,
                            env.curr_thread->waited);
-                    if (env.curr_thread->waited == 0) {
-                        // 从链表中删除
-                        env.curr_thread->prev->next = env.curr_thread->next;
-                        env.curr_thread->next->prev = env.curr_thread->prev;
-                        lutf_thread_t *tmp          = env.curr_thread->prev;
-                        // 回收资源
-                        // lutf_t *t = env.curr_thread;
-                        // *t        = NULL;
-                        // printf("*t: %p\n", *t);
-                        printf("free sched\n");
-                        free(env.curr_thread);
-                        // 指针更新
-                        env.curr_thread = tmp;
-                    }
-                    env.curr_thread->status = lutf_EXIT;
-                    break;
-                }
-                case lutf_EXIT: {
-                    printf("--------EXIT-------\n");
-                    // free(env.curr_thread->stack);
-                    // env.curr_thread->stack = NULL;
-                    // printf("(%d, %d)\n", env.curr_thread->id,
-                    //        env.curr_thread->waited);
                     // if (env.curr_thread->waited == 0) {
                     //     // 从链表中删除
                     //     env.curr_thread->prev->next = env.curr_thread->next;
@@ -452,10 +438,13 @@ int lutf_wait(lutf_t *t, size_t size) {
 
 int lutf_exit(void *value) {
     SIGBLOCK();
-    if (env.curr_thread != env.main_thread) {
+    if (env.curr_thread == env.main_thread) {
+        exit(0);
+    }
+    else {
         env.curr_thread->exit_value = value;
         printf("%d exit\n", env.curr_thread->id);
-        env.curr_thread->status = lutf_FREE;
+        env.curr_thread->status = lutf_EXIT;
         sched(SIGVTALRM);
     }
     return 0;
