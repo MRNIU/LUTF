@@ -35,8 +35,6 @@ Linux 用户级任务调度框架。
 
 
 
-
-
 ##  使用方法
 
 添加 `luth.h` 到你的代码中，并将编译出的库文件加入链接
@@ -58,8 +56,6 @@ export LD_LIBRARY_PATH=.:$LD_LIBRARY_PATH
 # 编译
 gcc src.c -llutf -L.
 ```
-
-
 
 - 示例
 
@@ -115,8 +111,6 @@ gcc src.c -llutf -L.
 
 
 
-
-
 ## 构建
 
 ```shell
@@ -131,6 +125,8 @@ make
 
 
 ## 性能
+
+TODO
 
 测试代码
 
